@@ -2,10 +2,12 @@ import axios from 'axios';
 
 // Use local network IP for mobile devices, localhost for web
 // Update this IP to match your computer's local IP address
+// For production, set EXPO_PUBLIC_API_URL environment variable to your production API URL
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000';
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },

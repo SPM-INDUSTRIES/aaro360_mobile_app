@@ -19,18 +19,6 @@ import { sendOtp, register, clearError, registerWithPhone } from '../src/store/s
 import { sendOTP, verifyOTP, formatPhoneNumber } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
 
-// Conditionally import reCAPTCHA - only available in development builds
-let FirebaseRecaptchaVerifierModal: any = null
-let isRecaptchaAvailable = false
-
-try {
-  const recaptchaModule = require('expo-firebase-recaptcha')
-  FirebaseRecaptchaVerifierModal = recaptchaModule.FirebaseRecaptchaVerifierModal
-  isRecaptchaAvailable = true
-} catch (error) {
-  console.warn('expo-firebase-recaptcha not available. Phone auth requires a development build.')
-  isRecaptchaAvailable = false
-}
 
 const LOGO_WIDTH = 250
 const LOGO_HEIGHT = 100
@@ -54,7 +42,6 @@ export default function RegisterScreen() {
   const [countdown, setCountdown] = useState(0)
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
-  const recaptchaVerifier = useRef<any>(null)
 
   useEffect(() => {
     if (error) {
@@ -152,26 +139,22 @@ export default function RegisterScreen() {
       if (!validatePhoneForm()) {
         return
       }
-      // Check if reCAPTCHA is available
-      if (!isRecaptchaAvailable) {
-        Alert.alert(
-          'Development Build Required',
-          'Phone authentication requires a development build with native modules. Please create a development build to use this feature.\n\nSee DEVELOPMENT_BUILD.md for instructions.',
-          [{ text: 'OK' }]
-        )
-        return
-      }
+      // Phone authentication is currently disabled
+      Alert.alert(
+        'Phone Authentication Unavailable',
+        'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.',
+        [{ text: 'OK' }]
+      )
+      return
 
+      // Disabled phone auth code below
+      /*
       try {
         setOtpLoading(true)
         const formattedPhone = formatPhoneNumber(phoneNumber)
         
-        // Pass the recaptchaVerifier ref directly - it acts as the verifier
-        if (!recaptchaVerifier.current) {
-          throw new Error('reCAPTCHA verifier not initialized')
-        }
-        
-        const confirmation = await sendOTP(formattedPhone, recaptchaVerifier.current)
+        // Phone auth requires a verifier from expo-firebase-recaptcha
+        const confirmation = await sendOTP(formattedPhone, null)
         setConfirmationResult(confirmation)
         setOtpSent(true)
         setCountdown(60)
@@ -182,6 +165,7 @@ export default function RegisterScreen() {
       } finally {
         setOtpLoading(false)
       }
+      */
     }
   }
 
@@ -198,25 +182,21 @@ export default function RegisterScreen() {
         Alert.alert('Success', 'OTP resent to your email')
       }
     } else {
-      // Check if reCAPTCHA is available
-      if (!isRecaptchaAvailable) {
-        Alert.alert(
-          'Development Build Required',
-          'Phone authentication requires a development build. Please create a development build to use this feature.'
-        )
-        return
-      }
+      // Phone authentication is currently disabled
+      Alert.alert(
+        'Phone Authentication Unavailable',
+        'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.'
+      )
+      return
 
+      // Disabled phone auth code below
+      /*
       try {
         setOtpLoading(true)
         const formattedPhone = formatPhoneNumber(phoneNumber)
         
-        // Pass the recaptchaVerifier ref directly - it acts as the verifier
-        if (!recaptchaVerifier.current) {
-          throw new Error('reCAPTCHA verifier not initialized')
-        }
-        
-        const confirmation = await sendOTP(formattedPhone, recaptchaVerifier.current)
+        // Phone auth requires a verifier from expo-firebase-recaptcha
+        const confirmation = await sendOTP(formattedPhone, null)
         setConfirmationResult(confirmation)
         setCountdown(60)
         Alert.alert('Success', 'OTP resent to your phone')
@@ -225,6 +205,7 @@ export default function RegisterScreen() {
       } finally {
         setOtpLoading(false)
       }
+      */
     }
   }
 
@@ -531,21 +512,6 @@ export default function RegisterScreen() {
         </View>
       </ScrollView>
 
-        {/* reCAPTCHA Verifier Modal - Only render if available */}
-        {isRecaptchaAvailable && FirebaseRecaptchaVerifierModal && (
-          <FirebaseRecaptchaVerifierModal
-            ref={recaptchaVerifier}
-            firebaseConfig={{
-              apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
-              authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-              projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
-            }}
-            attemptInvisibleVerification={true}
-            title="Verification"
-            subtitle="Please verify that you are a human"
-            cancelLabel="Cancel"
-          />
-        )}
     </KeyboardAvoidingView>
   )
 }

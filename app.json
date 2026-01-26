@@ -19,6 +19,9 @@
       "bundleIdentifier": "com.aaro360.app"
     },
     "android": {
+      "minSdkVersion": 24,
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFD700"
@@ -42,8 +45,10 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Aaro360 to use your location for delivery tracking."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
+    "scheme": "aaro360",
     "extra": {
       "router": {
         "origin": false

@@ -1,20 +1,35 @@
 import axios from 'axios'
-import { setupRequestInterceptor, setupResponseInterceptor } from './axios-interceptors'
 
 // Use local network IP for mobile devices, localhost for web
 // Update this IP to match your computer's local IP address
+// For production, set EXPO_PUBLIC_API_URL environment variable to your production API URL
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'
+
+// Log API URL in development for debugging (remove sensitive info in production)
+if (__DEV__) {
+  console.log('API Base URL:', API_URL)
+}
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Setup interceptors
-setupRequestInterceptor(api)
-setupResponseInterceptor(api)
+// Initialize interceptors - call this after store is created to avoid circular dependency
+// Using dynamic import to break the circular dependency cycle
+let interceptorsInitialized = false
+export const initializeInterceptors = async () => {
+  if (!interceptorsInitialized) {
+    // Dynamic import to avoid circular dependency at module load time
+    const { setupRequestInterceptor, setupResponseInterceptor } = await import('./axios-interceptors')
+    setupRequestInterceptor(api)
+    setupResponseInterceptor(api)
+    interceptorsInitialized = true
+  }
+}
 
 // Auth endpoints
 export const authApi = {

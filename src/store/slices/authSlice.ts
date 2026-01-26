@@ -4,6 +4,43 @@ import { authApi } from '../../lib/api'
 
 const REFRESH_TOKEN_KEY = 'aaro360_refresh_token'
 
+/**
+ * Extract user-friendly error message from axios error
+ */
+const getErrorMessage = (error: any): string => {
+  // Network error (no response from server)
+  if (!error.response) {
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'Connection timeout. Please check your internet connection and try again.'
+    }
+    if (error.message?.includes('Network Error') || error.message?.includes('network')) {
+      return 'Network error. Please check your internet connection and ensure the backend server is running.'
+    }
+    if (error.message?.includes('ERR_NETWORK')) {
+      return 'Cannot connect to server. Please check your internet connection and API URL configuration.'
+    }
+    return 'Network error. Please check your internet connection and try again.'
+  }
+
+  // Server responded with error
+  if (error.response?.data?.message) {
+    return error.response.data.message
+  }
+
+  // HTTP status code errors
+  if (error.response?.status === 500) {
+    return 'Server error. Please try again later.'
+  }
+  if (error.response?.status === 404) {
+    return 'API endpoint not found. Please check your API URL configuration.'
+  }
+  if (error.response?.status === 401) {
+    return 'Invalid credentials. Please check your email and password.'
+  }
+
+  return error.message || 'An unexpected error occurred. Please try again.'
+}
+
 export interface User {
   id: number
   email?: string | null
@@ -46,9 +83,8 @@ export const loginWithGoogle = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to login with Google'
-      )
+      console.error('Google login error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -68,9 +104,8 @@ export const loginWithEmail = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to login'
-      )
+      console.error('Email login error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -90,9 +125,8 @@ export const register = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to register'
-      )
+      console.error('Register error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -107,9 +141,8 @@ export const sendOtp = createAsyncThunk(
       const response = await authApi.sendOtp({ email })
       return { message: response.data.message }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to send OTP'
-      )
+      console.error('Send OTP error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -124,9 +157,8 @@ export const verifyOtp = createAsyncThunk(
       const response = await authApi.verifyOtp(data)
       return { verified: response.data.verified }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to verify OTP'
-      )
+      console.error('Verify OTP error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -146,9 +178,8 @@ export const loginWithPhone = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to login with phone'
-      )
+      console.error('Phone login error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -168,9 +199,8 @@ export const registerWithPhone = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to register with phone'
-      )
+      console.error('Phone register error:', error)
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -195,11 +225,10 @@ export const refreshAccessToken = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
+      console.error('Refresh token error:', error)
       // If refresh fails, clear stored token
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to refresh token'
-      )
+      return rejectWithValue(getErrorMessage(error))
     }
   }
 )
@@ -451,6 +480,7 @@ const authSlice = createSlice({
         if (action.payload) {
           state.accessToken = action.payload.accessToken
           state.isAuthenticated = true
+          state.status = 'idle'
         } else {
           state.status = 'idle'
         }

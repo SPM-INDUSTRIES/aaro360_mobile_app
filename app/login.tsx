@@ -13,29 +13,18 @@ import {
   ScrollView,
   Modal,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useRootNavigationState } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
 import { loginWithEmail, loginWithGoogle, clearError, loginWithPhone } from '../src/store/slices/authSlice'
 import * as Google from 'expo-auth-session/providers/google'
 import * as WebBrowser from 'expo-web-browser'
-import { sendOTP, verifyOTP, formatPhoneNumber } from '../src/services/phoneAuth.service'
+import { 
+  sendOTP, 
+  verifyOTP, 
+  formatPhoneNumber,
+} from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
-
-// Conditionally import reCAPTCHA - only available in development builds
-let FirebaseRecaptchaVerifierModal: any = null
-let isRecaptchaAvailable = false
-
-try {
-  // Try to import - will fail in Expo Go
-  const recaptchaModule = require('expo-firebase-recaptcha')
-  FirebaseRecaptchaVerifierModal = recaptchaModule.FirebaseRecaptchaVerifierModal
-  isRecaptchaAvailable = true
-} catch (error) {
-  // Not available in Expo Go - will need development build
-  console.warn('expo-firebase-recaptcha not available. Phone auth requires a development build.')
-  isRecaptchaAvailable = false
-}
 
 WebBrowser.maybeCompleteAuthSession()
 
@@ -44,6 +33,7 @@ const LOGO_HEIGHT = 100
 
 export default function LoginScreen() {
   const router = useRouter()
+  const navigationState = useRootNavigationState()
   const dispatch = useDispatch<AppDispatch>()
   const { status, error, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
@@ -59,7 +49,6 @@ export default function LoginScreen() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
-  const recaptchaVerifier = useRef<any>(null)
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
@@ -80,10 +69,15 @@ export default function LoginScreen() {
   }, [response])
 
   useEffect(() => {
+    // Wait for navigation state to be ready before attempting to navigate
+    if (!navigationState?.key) {
+      return
+    }
+
     if (isAuthenticated) {
       router.replace('/(tabs)/')
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, navigationState?.key])
 
   useEffect(() => {
     if (error) {
@@ -103,6 +97,7 @@ export default function LoginScreen() {
       if (interval) clearInterval(interval)
     }
   }, [resendCountdown])
+
 
   const handleEmailLogin = async () => {
     if (!email || !password) {
@@ -133,27 +128,22 @@ export default function LoginScreen() {
       return
     }
 
-    // Check if reCAPTCHA is available
-    if (!isRecaptchaAvailable) {
-      Alert.alert(
-        'Development Build Required',
-        'Phone authentication requires a development build with native modules. Please create a development build to use this feature.\n\nSee DEVELOPMENT_BUILD.md for instructions.',
-        [{ text: 'OK' }]
-      )
-      return
-    }
+    // Phone authentication is currently disabled
+    Alert.alert(
+      'Phone Authentication Unavailable',
+      'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.'
+    )
+    return
 
+    // Disabled phone auth code below
+    /*
     try {
       setOtpLoading(true)
       console.log('Attempting to send OTP to:', phoneNumber)
       const formattedPhone = formatPhoneNumber(phoneNumber)
       
-      // Pass the recaptchaVerifier ref directly - it acts as the verifier
-      if (!recaptchaVerifier.current) {
-        throw new Error('reCAPTCHA verifier not initialized')
-      }
-      
-      const confirmation = await sendOTP(formattedPhone, recaptchaVerifier.current)
+      // Phone auth requires a verifier from expo-firebase-recaptcha
+      const confirmation = await sendOTP(formattedPhone, null)
       console.log('OTP sent successfully, showing modal')
       setConfirmationResult(confirmation)
       setShowOtpModal(true)
@@ -165,6 +155,7 @@ export default function LoginScreen() {
     } finally {
       setOtpLoading(false)
     }
+    */
   }
 
   const handleVerifyOtp = async () => {
@@ -202,26 +193,22 @@ export default function LoginScreen() {
       return
     }
 
-    // Check if reCAPTCHA is available
-    if (!isRecaptchaAvailable) {
-      Alert.alert(
-        'Development Build Required',
-        'Phone authentication requires a development build. Please create a development build to use this feature.'
-      )
-      return
-    }
+    // Phone authentication is currently disabled
+    Alert.alert(
+      'Phone Authentication Unavailable',
+      'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.'
+    )
+    return
 
+    // Disabled phone auth code below
+    /*
     try {
       setOtpLoading(true)
       console.log('Resending OTP to:', phoneNumber)
       const formattedPhone = formatPhoneNumber(phoneNumber)
       
-      // Pass the recaptchaVerifier ref directly - it acts as the verifier
-      if (!recaptchaVerifier.current) {
-        throw new Error('reCAPTCHA verifier not initialized')
-      }
-      
-      const confirmation = await sendOTP(formattedPhone, recaptchaVerifier.current)
+      // Phone auth requires a verifier from expo-firebase-recaptcha
+      const confirmation = await sendOTP(formattedPhone, null)
       setConfirmationResult(confirmation)
       setResendCountdown(60)
       Alert.alert('Success', 'OTP resent to your phone')
@@ -232,6 +219,7 @@ export default function LoginScreen() {
     } finally {
       setOtpLoading(false)
     }
+    */
   }
 
   const handleGoogleLogin = async () => {
@@ -496,21 +484,6 @@ export default function LoginScreen() {
         </View>
       </Modal>
 
-      {/* reCAPTCHA Verifier Modal - Only render if available */}
-      {isRecaptchaAvailable && FirebaseRecaptchaVerifierModal && (
-        <FirebaseRecaptchaVerifierModal
-          ref={recaptchaVerifier}
-          firebaseConfig={{
-            apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
-            authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-            projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
-          }}
-          attemptInvisibleVerification={true}
-          title="Verification"
-          subtitle="Please verify that you are a human"
-          cancelLabel="Cancel"
-        />
-      )}
     </KeyboardAvoidingView>
   )
 }

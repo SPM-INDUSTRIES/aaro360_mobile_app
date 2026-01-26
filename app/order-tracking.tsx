@@ -4,8 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import MapView, { Marker } from 'react-native-maps'
 import { orderApi } from '../src/lib/api'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || '${process.env.EXPO_PUBLIC_API_URL}'
-
 interface Order {
   id: number
   orderNumber: string
@@ -31,9 +29,8 @@ export default function OrderTrackingScreen() {
   const fetchOrder = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/orders/${id}`)
-      const data = await response.json()
-      setOrder(data)
+      const response = await orderApi.getById(Number(id))
+      setOrder(response.data)
     } catch (error) {
       console.error('Failed to fetch order:', error)
     } finally {

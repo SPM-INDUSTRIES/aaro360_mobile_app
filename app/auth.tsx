@@ -1,20 +1,26 @@
 import { useEffect } from 'react'
-import { useRouter } from 'expo-router'
+import { useRouter, useRootNavigationState } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { RootState } from '../src/store/store'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 
 export default function AuthScreen() {
   const router = useRouter()
+  const navigationState = useRootNavigationState()
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
 
   useEffect(() => {
+    // Wait for navigation state to be ready before attempting to navigate
+    if (!navigationState?.key) {
+      return
+    }
+
     if (isAuthenticated) {
       router.replace('/(tabs)/')
     } else {
       router.replace('/login')
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, navigationState?.key])
 
   return (
     <View style={styles.container}>

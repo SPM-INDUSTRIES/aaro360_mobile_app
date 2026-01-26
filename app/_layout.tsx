@@ -1,30 +1,54 @@
 import { useEffect, useState } from 'react'
-import { Stack, useRouter, useSegments } from 'expo-router'
-import { Provider, useDispatch, useSelector } from 'react-redux'
-import { store, RootState } from '../src/store/store'
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router'
+import { View, ActivityIndicator, StyleSheet } from 'react-native'
+import { Provider } from 'react-redux'
+import { store, useAppDispatch, useAppSelector } from '../src/store/store'
 import { initializeAuth } from '../src/store/slices/authSlice'
-// Import api to initialize interceptors
-import '../src/lib/api'
+// Initialize interceptors after store is created to avoid circular dependency
+import { initializeInterceptors } from '../src/lib/api'
 
 function AppContent() {
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
   const router = useRouter()
   const segments = useSegments()
-  const { isAuthenticated, status } = useSelector((state: RootState) => state.auth)
+  const navigationState = useRootNavigationState()
+  const { isAuthenticated, status } = useAppSelector((state) => state.auth)
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // Initialize interceptors once when component mounts (after store is available)
+  useEffect(() => {
+    initializeInterceptors()
+  }, [])
 
   useEffect(() => {
     // Initialize auth state on app start
     const init = async () => {
-      await dispatch(initializeAuth())
-      setIsInitialized(true)
+      try {
+        await dispatch(initializeAuth())
+        setIsInitialized(true)
+      } catch (error) {
+        console.error('Error initializing auth:', error)
+        // Still set initialized to true to prevent infinite loading
+        setIsInitialized(true)
+      }
     }
     init()
-  }, [dispatch])
+    
+    // Fallback: If auth initialization takes too long, proceed anyway
+    const timeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn('Auth initialization taking too long, proceeding anyway')
+        setIsInitialized(true)
+      }
+    }, 5000)
+
+    return () => clearTimeout(timeout)
+  }, [dispatch, isInitialized])
 
   useEffect(() => {
-    // Wait for auth initialization to complete
-    if (!isInitialized || status === 'loading') {
+    // Wait for auth initialization AND navigation state to be ready
+    // Navigation state indicates the Stack has mounted
+    if (!isInitialized || !navigationState?.key) {
       return
     }
 
@@ -32,24 +56,38 @@ function AppContent() {
     const isAuthRoute = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'auth'
     const isProtectedRoute = currentSegment === '(tabs)' || currentSegment === 'checkout' || currentSegment === 'order-tracking' || currentSegment === 'cart'
     
-    if (!isAuthenticated) {
-      // Not authenticated - redirect to login if on protected routes
-      if (isProtectedRoute) {
-        router.replace('/login')
-      } else if (!isAuthRoute && currentSegment) {
-        // If on any other route and not authenticated, go to login
-        router.replace('/login')
-      }
-    } else {
-      // Authenticated - redirect to home if on auth pages
-      if (isAuthRoute) {
-        router.replace('/(tabs)/')
-      }
+    // If authenticated and on login/register, redirect to home
+    if (isAuthenticated && isAuthRoute) {
+      router.replace('/(tabs)/')
+      return
     }
-  }, [isAuthenticated, segments, status, isInitialized])
+    
+    // If not authenticated and on protected routes, redirect to login
+    if (!isAuthenticated && isProtectedRoute) {
+      router.replace('/login')
+      return
+    }
+    
+    // If not authenticated and on other routes (not login/register), redirect to login
+    if (!isAuthenticated && !isAuthRoute && currentSegment) {
+      router.replace('/login')
+      return
+    }
+  }, [isAuthenticated, segments, status, isInitialized, navigationState?.key, router])
+
+  // Show loading screen ONLY while initializing auth
+  // Stack must render first before we can navigate
+  if (!isInitialized) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F59E0B" />
+      </View>
+    )
+  }
 
   return (
     <Stack
+      initialRouteName="login"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#FFFFFF',
@@ -80,3 +118,12 @@ export default function RootLayout() {
     </Provider>
   )
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+})

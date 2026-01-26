@@ -23,15 +23,8 @@ export const formatPhoneNumber = (phone: string): string => {
     cleaned = '+94' + cleaned
   }
 
-  // Ensure format is +94XXXXXXXXX (9 digits after country code for Sri Lanka)
-  // Format: +94 (3 chars) + 9 digits = 12 characters total
-  // Example: +94765233573
-  if (cleaned.startsWith('+94') && /^\+94\d{9}$/.test(cleaned)) {
-    return cleaned
-  }
-
-  // If validation fails, still return the cleaned value but log a warning
-  console.warn('Phone number format may be invalid:', cleaned)
+  // Return formatted number without warning
+  // Validation will happen in sendOTP where the number is actually used
   return cleaned
 }
 
@@ -53,7 +46,8 @@ const withTimeout = <T>(
 
 /**
  * Send OTP to phone number
- * Note: Requires reCAPTCHA verifier (pass the FirebaseRecaptchaVerifierModal ref directly)
+ * Note: Phone authentication requires a reCAPTCHA verifier
+ * For React Native, use expo-firebase-recaptcha's FirebaseRecaptchaVerifierModal
  */
 export const sendOTP = async (
   phoneNumber: string,
@@ -66,7 +60,7 @@ export const sendOTP = async (
     }
 
     if (!verifier) {
-      throw new Error('reCAPTCHA verifier is required. Please initialize it first.')
+      throw new Error('Phone authentication verifier is required. Please use FirebaseRecaptchaVerifierModal from expo-firebase-recaptcha.')
     }
 
     const formattedPhone = formatPhoneNumber(phoneNumber)
@@ -97,6 +91,8 @@ export const sendOTP = async (
       throw new Error('Too many requests. Please try again later.')
     } else if (error.code === 'auth/quota-exceeded') {
       throw new Error('SMS quota exceeded. Please contact support.')
+    } else if (error.code === 'auth/captcha-check-failed') {
+      throw new Error('Verification failed. Please try again.')
     } else if (error.message?.includes('timed out')) {
       throw error
     } else if (error.message) {
@@ -136,7 +132,7 @@ export const verifyOTP = async (
 
 /**
  * Check if a phone number is a test number
- * Test numbers are configured in Firebase Console and skip reCAPTCHA
+ * Test numbers are configured in Firebase Console
  */
 export const isTestPhoneNumber = (phoneNumber: string): boolean => {
   // You can add test number patterns here
