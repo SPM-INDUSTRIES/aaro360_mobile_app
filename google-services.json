@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "475059090528",
+    "project_id": "aaro360-d227b",
+    "storage_bucket": "aaro360-d227b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:475059090528:android:571e39cc0c2c4b05383f05",
+        "android_client_info": {
+          "package_name": "com.aaro360.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7AiyMkoTq5KCtQWBrvGeYAdboqRzGwyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
