@@ -37,14 +37,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="cart"
-        options={{
-          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
-          tabBarLabel: 'Cart',
+          tabBarIcon: ({ color }) => <Ionicons name="search" size={24} color={color} />,
+          tabBarLabel: 'Explore',
         }}
       />
       <Tabs.Screen
@@ -55,10 +49,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="cart"
+        options={{
+          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
+          tabBarLabel: 'Cart',
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
-          tabBarLabel: 'Profile',
+          href: null,
         }}
       />
     </Tabs>
