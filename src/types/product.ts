@@ -2,6 +2,8 @@ export enum ProductCategory {
   FOOD = 'food',
   GROCERY = 'grocery',
   MEDICINE = 'medicine',
+  ECHANELLING = 'echannelling',
+  VEHICLE = 'vehicle',
 }
 
 export interface Product {
