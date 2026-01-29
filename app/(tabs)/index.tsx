@@ -9,6 +9,7 @@ import { offerApi, Offer } from '../../src/lib/offerApi'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Theme } from '../../src/styles/theme'
+import { Skeleton } from '../../src/components/SkeletonLoader'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -175,6 +176,7 @@ export default function HomeScreen() {
             discountPrice: undefined,
             reviewCount: 0,
             averageRating: 0,
+            orderCount: Number(item.orders_count || item.orderCount) || 0,
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
           }))
@@ -202,10 +204,15 @@ export default function HomeScreen() {
           index === self.findIndex((p) => p.id === product.id)
         )
 
+        // Apply sorting by order count (descending)
+        const sortedProducts = uniqueProducts.sort((a, b) =>
+          (b.orderCount || 0) - (a.orderCount || 0)
+        )
+
         // Apply pagination
         const startIndex = (currentPage - 1) * 10
         const endIndex = startIndex + 10
-        const paginatedProducts = uniqueProducts.slice(startIndex, endIndex)
+        const paginatedProducts = sortedProducts.slice(startIndex, endIndex)
 
         setAllOffers(paginatedProducts)
         setTotalPages(Math.ceil(uniqueProducts.length / 10))
@@ -267,15 +274,17 @@ export default function HomeScreen() {
     return specialOffers.filter((offer) => {
       // Apply strict filtering based on category
       if (selectedCategory === ProductCategory.FOOD) {
+        // ONLY show food specific offers in food tab
         return offer.linkType === 'food_restaurant' || offer.linkType === 'food_item'
       } else if (selectedCategory === ProductCategory.GROCERY) {
-        return offer.linkType === 'grocery_product'
+        // Show grocery specific offers AND general offers in grocery tab
+        return !offer.linkType || offer.linkType === 'grocery_product'
       } else if (selectedCategory === ProductCategory.MEDICINE) {
         return offer.linkType === 'medicine_product'
       } else if (selectedCategory === ProductCategory.ECHANELLING) {
-        return offer.linkType === 'echanelling_service' // Assuming this exists or will exist
+        return offer.linkType === 'echanelling_service'
       } else if (selectedCategory === ProductCategory.VEHICLE) {
-        return offer.linkType === 'vehicle_service' // Assuming this exists or will exist
+        return offer.linkType === 'vehicle_service'
       }
 
       return false
@@ -292,7 +301,10 @@ export default function HomeScreen() {
       <View style={styles.specialOffersSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Special Offers</Text>
-          <TouchableOpacity onPress={() => { }}>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/special-offers',
+            params: { category: selectedCategory }
+          })}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
@@ -336,11 +348,6 @@ export default function HomeScreen() {
                 colors={['transparent', 'rgba(0,0,0,0.8)']}
                 style={styles.offerGradientOverlay}
               />
-              <View style={styles.offerBadgeContainer}>
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerBadgeText}>LIMITED TIME</Text>
-                </View>
-              </View>
               <View style={styles.offerOverlay}>
                 {offer.title && (
                   <Text style={styles.offerTitle}>{offer.title}</Text>
@@ -350,9 +357,6 @@ export default function HomeScreen() {
                     {offer.description}
                   </Text>
                 )}
-                <TouchableOpacity style={styles.claimButton}>
-                  <Text style={styles.claimButtonText}>Claim Now</Text>
-                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))}
@@ -382,7 +386,10 @@ export default function HomeScreen() {
       <View style={styles.foodCategoriesSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Food Categories</Text>
-          <TouchableOpacity onPress={() => router.push('/food-categories')}>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/food-categories',
+            params: { category: selectedCategory }
+          })}>
             <Text style={styles.seeAllText}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -421,7 +428,10 @@ export default function HomeScreen() {
       <View style={styles.trendingBrandsSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-          <TouchableOpacity onPress={() => router.push('/restaurants')}>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/restaurants',
+            params: { category: selectedCategory }
+          })}>
             <Text style={styles.seeAllText}>View More</Text>
           </TouchableOpacity>
         </View>
@@ -439,7 +449,7 @@ export default function HomeScreen() {
                   <Text style={styles.brandPlaceholder}>{brand.name.charAt(0)}</Text>
                 </View>
               )}
-              <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
+              <Text style={styles.brandName} numberOfLines={2}>{brand.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -452,9 +462,9 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.allOffersSection}>
-        <Text style={styles.sectionTitle}>All Offers</Text>
+        <Text style={styles.sectionTitle}>Top Orders</Text>
         {loading ? (
-          <ActivityIndicator size="large" color="#0066FF" style={styles.loader} />
+          <ActivityIndicator size="large" color={Theme.colors.primary} style={styles.loader} />
         ) : allOffers.length > 0 ? (
           <>
             {allOffers.map((offer) => (
@@ -481,7 +491,11 @@ export default function HomeScreen() {
                 )}
                 <View style={styles.allOfferContent}>
                   <Text style={styles.allOfferName}>{offer.name}</Text>
-                  <Text style={styles.allOfferSubtext}>Special Offers</Text>
+                  <Text style={styles.allOfferSubtext}>
+                    {offer.orderCount && offer.orderCount > 0
+                      ? `${offer.orderCount} orders recently`
+                      : 'Most Popular'}
+                  </Text>
                   <View style={styles.allOfferTags}>
                     <View style={styles.newTag}>
                       <Text style={styles.newTagText}>NEW</Text>
@@ -626,23 +640,10 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(tabs)/profile')}
-        >
-          <Ionicons name="person" size={24} color={Theme.colors.deepBlue} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[0]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -652,30 +653,48 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Top Categories */}
-        <View style={styles.topCategoriesSection}>
-          <Text style={styles.sectionTitle}>Top Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryCard,
-                  selectedCategory === category.apiType && styles.categoryCardActive,
-                ]}
-                onPress={() => handleCategoryPress(category.apiType)}
-              >
-                <View style={[
-                  styles.categoryIconContainer,
-                  { backgroundColor: category.color === '#FFFFFF' ? Theme.colors.backgroundLight : category.color },
-                  selectedCategory === category.apiType && styles.categoryIconContainerActive,
-                ]}>
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Sticky Header Container */}
+        <View style={styles.stickyHeaderContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() => router.push('/(tabs)/profile')}
+            >
+              <Ionicons name="person" size={24} color={Theme.colors.deepBlue} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Top Categories */}
+          <View style={styles.topCategoriesSection}>
+            <Text style={styles.sectionTitle}>Top Categories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryCard,
+                    selectedCategory === category.apiType && styles.categoryCardActive,
+                  ]}
+                  onPress={() => handleCategoryPress(category.apiType)}
+                >
+                  <View style={[
+                    styles.categoryIconContainer,
+                    { backgroundColor: category.color === '#FFFFFF' ? Theme.colors.backgroundLight : category.color },
+                    selectedCategory === category.apiType && styles.categoryIconContainerActive,
+                  ]}>
+                    <Text style={styles.categoryIcon}>{category.icon}</Text>
+                  </View>
+                  <Text style={styles.categoryName}>{category.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -723,8 +742,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.sm,
     paddingTop: 0,
     paddingBottom: 10,
-    backgroundColor: 'transparent',
+    backgroundColor: Theme.colors.backgroundLight,
     borderBottomWidth: 0,
+  },
+  stickyHeaderContainer: {
+    backgroundColor: Theme.colors.backgroundLight,
+    zIndex: 10,
   },
   logoImage: {
     width: 120,
@@ -782,10 +805,11 @@ const styles = StyleSheet.create({
   },
   topCategoriesSection: {
     paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingVertical: 10,
+    backgroundColor: Theme.colors.backgroundLight,
   },
   categoriesScroll: {
-    marginTop: 10,
+    marginTop: 0,
   },
   categoryCard: {
     alignItems: 'center',
@@ -978,12 +1002,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: Theme.borderRadius.xl,
-    backgroundColor: Theme.colors.white,
-    padding: 10,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-    ...Theme.shadows.small,
   },
   brandPlaceholder: {
     fontSize: 24,

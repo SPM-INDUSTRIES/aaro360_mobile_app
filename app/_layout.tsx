@@ -33,7 +33,7 @@ function AppContent() {
       }
     }
     init()
-    
+
     // Fallback: If auth initialization takes too long, proceed anyway
     const timeout = setTimeout(() => {
       if (!isInitialized) {
@@ -55,19 +55,19 @@ function AppContent() {
     const currentSegment = segments[0]
     const isAuthRoute = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'auth'
     const isProtectedRoute = currentSegment === '(tabs)' || currentSegment === 'checkout' || currentSegment === 'order-tracking' || currentSegment === 'cart'
-    
+
     // If authenticated and on login/register, redirect to home
     if (isAuthenticated && isAuthRoute) {
       router.replace('/(tabs)/')
       return
     }
-    
+
     // If not authenticated and on protected routes, redirect to login
     if (!isAuthenticated && isProtectedRoute) {
       router.replace('/login')
       return
     }
-    
+
     // If not authenticated and on other routes (not login/register), redirect to login
     if (!isAuthenticated && !isAuthRoute && currentSegment) {
       router.replace('/login')
@@ -107,6 +107,7 @@ function AppContent() {
       <Stack.Screen name="cart" options={{ headerShown: false }} />
       <Stack.Screen name="checkout" options={{ headerShown: false }} />
       <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
+      <Stack.Screen name="special-offers" options={{ headerShown: false }} />
     </Stack>
   )
 }

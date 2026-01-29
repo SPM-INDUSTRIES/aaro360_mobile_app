@@ -32,6 +32,7 @@ export interface Product {
   averageRating: number;
   isFeatured: boolean;
   discountPrice?: number;
+  orderCount?: number;
   createdAt: string;
   updatedAt: string;
 }
