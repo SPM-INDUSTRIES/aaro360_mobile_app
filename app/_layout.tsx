@@ -6,6 +6,7 @@ import { store, useAppDispatch, useAppSelector } from '../src/store/store'
 import { initializeAuth } from '../src/store/slices/authSlice'
 // Initialize interceptors after store is created to avoid circular dependency
 import { initializeInterceptors } from '../src/lib/api'
+import FloatingCartButton from '../src/components/FloatingCartButton'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -22,28 +23,31 @@ function AppContent() {
 
   useEffect(() => {
     // Initialize auth state on app start
+    let isMounted = true
     const init = async () => {
       try {
         await dispatch(initializeAuth())
-        setIsInitialized(true)
+        if (isMounted) setIsInitialized(true)
       } catch (error) {
         console.error('Error initializing auth:', error)
         // Still set initialized to true to prevent infinite loading
-        setIsInitialized(true)
+        if (isMounted) setIsInitialized(true)
       }
     }
     init()
 
     // Fallback: If auth initialization takes too long, proceed anyway
     const timeout = setTimeout(() => {
-      if (!isInitialized) {
-        console.warn('Auth initialization taking too long, proceeding anyway')
+      if (isMounted) {
         setIsInitialized(true)
       }
     }, 5000)
 
-    return () => clearTimeout(timeout)
-  }, [dispatch, isInitialized])
+    return () => {
+      isMounted = false
+      clearTimeout(timeout)
+    }
+  }, [dispatch])
 
   useEffect(() => {
     // Wait for auth initialization AND navigation state to be ready
@@ -86,29 +90,32 @@ function AppContent() {
   }
 
   return (
-    <Stack
-      initialRouteName="login"
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#FFFFFF',
-        },
-        headerTintColor: '#1E3A8A', // Dark blue from logo
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          color: '#1E3A8A',
-        },
-        headerShadowVisible: false,
-      }}
-    >
-      <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="register" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="cart" options={{ headerShown: false }} />
-      <Stack.Screen name="checkout" options={{ headerShown: false }} />
-      <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
-      <Stack.Screen name="special-offers" options={{ headerShown: false }} />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <Stack
+        initialRouteName="login"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#FFFFFF',
+          },
+          headerTintColor: '#1E3A8A', // Dark blue from logo
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: '#1E3A8A',
+          },
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="cart" options={{ headerShown: false }} />
+        <Stack.Screen name="checkout" options={{ headerShown: false }} />
+        <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
+        <Stack.Screen name="special-offers" options={{ headerShown: false }} />
+      </Stack>
+      {isAuthenticated && <FloatingCartButton />}
+    </View>
   )
 }
 

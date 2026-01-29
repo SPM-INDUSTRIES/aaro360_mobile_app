@@ -64,17 +64,8 @@ export default function SearchScreen() {
       unitPrice: Number(product.price || 0),
       restaurantId: restaurantId,
     }))
-
-    // Show success message
-    Alert.alert(
-      'Added to Cart',
-      `${product.name} has been added to your cart`,
-      [
-        { text: 'Continue Shopping', style: 'cancel' },
-        { text: 'View Cart', onPress: () => router.push('/cart') }
-      ]
-    )
   }
+
 
   useEffect(() => {
     // We always search/explore, but filters.category now overrides the initialCategory param

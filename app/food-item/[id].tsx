@@ -165,17 +165,8 @@ export default function FoodItemDetailScreen() {
       unitPrice: unitPrice,
       restaurantId: restaurantId,
     }))
-
-    // Show success message
-    Alert.alert(
-      'Added to Cart',
-      `${quantity}x ${itemName} added to cart`,
-      [
-        { text: 'Continue Shopping', style: 'cancel' },
-        { text: 'View Cart', onPress: () => router.push('/cart') }
-      ]
-    )
   }
+
 
   const renderSkeleton = () => {
     return (
