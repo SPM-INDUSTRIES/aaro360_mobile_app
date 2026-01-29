@@ -89,7 +89,7 @@ export default function HomeScreen() {
       // Refresh offers
       const offers = await offerApi.getCarousel()
       setSpecialOffers(offers || [])
-      
+
       // Refresh category data if category is selected
       if (selectedCategory) {
         await fetchCategoryData(selectedCategory)
@@ -104,7 +104,7 @@ export default function HomeScreen() {
   const fetchCategoryData = async (category: ProductCategory) => {
     try {
       setLoading(true)
-      
+
       if (category === ProductCategory.MEDICINE) {
         // For medicine, fetch hospitals/pharmacies
         const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=pharmacy`)
@@ -118,13 +118,13 @@ export default function HomeScreen() {
       } else {
         // For Food and Grocery
         const vendorType = category === ProductCategory.FOOD ? 'restaurant' : 'grocery_store'
-        
+
         // Fetch vendors (restaurants/stores) for Trending Brands
         const vendorsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=${vendorType}`)
         const vendorsData = await vendorsResponse.json()
         // Vendors API returns array directly, not wrapped in data
         setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData.data || [])
-        
+
         // Fetch food categories if Food is selected
         if (category === ProductCategory.FOOD) {
           const categoriesResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=food`)
@@ -133,10 +133,10 @@ export default function HomeScreen() {
         } else {
           setFoodCategories([])
         }
-        
+
         // Fetch products for All Offers
         let allProducts: Product[] = []
-        
+
         // For both Food and Grocery, fetch food_items from food_items table
         if (category === ProductCategory.FOOD || category === ProductCategory.GROCERY) {
           try {
@@ -144,13 +144,13 @@ export default function HomeScreen() {
             const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items`)
             const foodItemsData = await foodItemsResponse.json()
             const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
-            
+
             // Filter by category type
             const categoryType = category === ProductCategory.FOOD ? 'food' : 'grocery'
-            const filteredItems = foodItems.filter((item: any) => 
+            const filteredItems = foodItems.filter((item: any) =>
               item.category?.type === categoryType && item.isAvailable
             )
-            
+
             // Convert food items to product format
             const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
               id: `food-${item.id}`,
@@ -176,13 +176,13 @@ export default function HomeScreen() {
               createdAt: item.createdAt,
               updatedAt: item.updatedAt,
             }))
-            
+
             allProducts = [...itemsAsProducts]
           } catch (error) {
             console.error(`Failed to fetch ${category} items:`, error)
           }
         }
-        
+
         // Also fetch from products table
         try {
           const productsResponse = await productApi.getAll({
@@ -195,20 +195,20 @@ export default function HomeScreen() {
         } catch (error) {
           console.error('Failed to fetch products:', error)
         }
-        
+
         // Remove duplicates based on id
         const uniqueProducts = allProducts.filter((product, index, self) =>
           index === self.findIndex((p) => p.id === product.id)
         )
-        
+
         // Apply pagination
         const startIndex = (currentPage - 1) * 10
         const endIndex = startIndex + 10
         const paginatedProducts = uniqueProducts.slice(startIndex, endIndex)
-        
+
         setAllOffers(paginatedProducts)
         setTotalPages(Math.ceil(uniqueProducts.length / 10))
-        
+
         // Fetch best offers (featured products)
         try {
           const featured = await productApi.getFeatured(6)
@@ -217,7 +217,7 @@ export default function HomeScreen() {
           console.error('Failed to fetch featured products:', error)
           setBestOffers([])
         }
-        
+
         setHospitals([])
       }
     } catch (error) {
@@ -228,11 +228,8 @@ export default function HomeScreen() {
   }
 
   const handleCategoryPress = (category: ProductCategory) => {
-    // Navigate to search/products screen with category filter
-    router.push({
-      pathname: '/(tabs)/search',
-      params: { category: category },
-    })
+    setSelectedCategory(category)
+    setCurrentPage(1)
   }
 
   const handleCallHospital = (phone: string) => {
@@ -426,8 +423,8 @@ export default function HomeScreen() {
         ) : allOffers.length > 0 ? (
           <>
             {allOffers.map((offer) => (
-              <TouchableOpacity 
-                key={offer.id} 
+              <TouchableOpacity
+                key={offer.id}
                 style={styles.allOfferCard}
                 onPress={() => {
                   // Check if it's a food item (ID starts with "food-")
@@ -510,7 +507,7 @@ export default function HomeScreen() {
             const imageUrl = hospital.coverImageUrl || hospital.logoUrl;
             // Handle both URL and base64 images
             const isValidImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('/'));
-            
+
             return (
               <TouchableOpacity
                 key={hospital.id}
@@ -518,8 +515,8 @@ export default function HomeScreen() {
                 onPress={() => hospital.phone && handleCallHospital(hospital.phone)}
               >
                 {isValidImage ? (
-                  <Image 
-                    source={{ uri: imageUrl }} 
+                  <Image
+                    source={{ uri: imageUrl }}
                     style={styles.hospitalImage}
                     resizeMode="cover"
                     onError={(error) => {
@@ -532,21 +529,21 @@ export default function HomeScreen() {
                     <Ionicons name="medical" size={40} color="#8B5CF6" />
                   </View>
                 )}
-              <View style={styles.hospitalInfo}>
-                <Text style={styles.hospitalName}>{hospital.name}</Text>
-                {hospital.address && (
-                  <Text style={styles.hospitalAddress} numberOfLines={2}>{hospital.address}</Text>
-                )}
-                {hospital.phone && (
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => handleCallHospital(hospital.phone!)}
-                  >
-                    <Ionicons name="call" size={20} color="#FFF" />
-                    <Text style={styles.callButtonText}>Call {hospital.phone}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                <View style={styles.hospitalInfo}>
+                  <Text style={styles.hospitalName}>{hospital.name}</Text>
+                  {hospital.address && (
+                    <Text style={styles.hospitalAddress} numberOfLines={2}>{hospital.address}</Text>
+                  )}
+                  {hospital.phone && (
+                    <TouchableOpacity
+                      style={styles.callButton}
+                      onPress={() => handleCallHospital(hospital.phone!)}
+                    >
+                      <Ionicons name="call" size={20} color="#FFF" />
+                      <Text style={styles.callButtonText}>Call {hospital.phone}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </TouchableOpacity>
             )
           })}
@@ -559,15 +556,15 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Image 
-          source={require('../../assets/logo.png')} 
+        <Image
+          source={require('../../assets/logo.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
