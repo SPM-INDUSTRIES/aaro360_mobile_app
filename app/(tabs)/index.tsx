@@ -458,7 +458,10 @@ export default function HomeScreen() {
   }
 
   const renderAllOffers = () => {
-    if (!selectedCategory || selectedCategory === ProductCategory.MEDICINE || selectedCategory === ProductCategory.VEHICLE) return null
+    if (!selectedCategory ||
+      selectedCategory === ProductCategory.MEDICINE ||
+      selectedCategory === ProductCategory.VEHICLE ||
+      selectedCategory === ProductCategory.ECHANELLING) return null
 
     return (
       <View style={styles.allOffersSection}>
