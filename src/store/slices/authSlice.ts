@@ -305,6 +305,11 @@ const authSlice = createSlice({
       state.accessToken = action.payload
       state.isAuthenticated = !!action.payload
     },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Login with Google
@@ -498,5 +503,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { clearError, setAccessToken } = authSlice.actions
+export const { clearError, setAccessToken, updateUser } = authSlice.actions
 export default authSlice.reducer

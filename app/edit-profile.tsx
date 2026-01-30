@@ -1,0 +1,300 @@
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native'
+import { useState, useCallback } from 'react'
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import { useSelector, useDispatch } from 'react-redux'
+import { RootState } from '../src/store/store'
+import { userApi } from '../src/lib/api'
+import { updateUser } from '../src/store/slices/authSlice'
+import { Theme } from '../src/styles/theme'
+import * as ImagePicker from 'expo-image-picker'
+
+export default function EditProfileScreen() {
+    const router = useRouter()
+    const dispatch = useDispatch()
+    const { user } = useSelector((state: RootState) => state.auth)
+
+    const [firstName, setFirstName] = useState(user?.firstName || '')
+    const [lastName, setLastName] = useState(user?.lastName || '')
+    const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '')
+    const [address, setAddress] = useState((user as any)?.address || '')
+    const [city, setCity] = useState((user as any)?.city || '')
+    const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const handlePickImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!')
+                return
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.5,
+                base64: true,
+            })
+
+            if (!result.canceled && result.assets[0].base64) {
+                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`
+                setProfilePicture(base64Image)
+            }
+        } catch (error) {
+            console.error('Pick image error:', error)
+            Alert.alert('Error', 'Failed to pick image')
+        }
+    }
+
+    const handleSave = async () => {
+        if (!firstName.trim() || !lastName.trim()) {
+            Alert.alert('Error', 'First and last name are required')
+            return
+        }
+
+        try {
+            setIsSubmitting(true)
+            const updateData = {
+                firstName,
+                lastName,
+                phoneNumber,
+                address,
+                city,
+                profilePicture
+            }
+
+            await userApi.updateProfile(user!.id, updateData)
+
+            // Update local state
+            dispatch(updateUser(updateData))
+
+            Alert.alert('Success', 'Profile updated successfully', [
+                { text: 'OK', onPress: () => router.back() }
+            ])
+        } catch (error: any) {
+            console.error('Update profile error:', error)
+            Alert.alert('Error', error.response?.data?.message || 'Failed to update profile')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Edit Profile</Text>
+                <View style={{ width: 44 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.avatarSection}>
+                    <TouchableOpacity onPress={handlePickImage} style={styles.avatarButton}>
+                        {profilePicture ? (
+                            <Image source={{ uri: profilePicture }} style={styles.avatarImage} />
+                        ) : (
+                            <View style={styles.avatarPlaceholder}>
+                                <Ionicons name="person" size={50} color="#CCC" />
+                            </View>
+                        )}
+                        <View style={styles.cameraIcon}>
+                            <Ionicons name="camera" size={20} color="#FFF" />
+                        </View>
+                    </TouchableOpacity>
+                    <Text style={styles.avatarHelp}>Tap to change profile picture</Text>
+                </View>
+
+                <View style={styles.form}>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>First Name</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={firstName}
+                            onChangeText={setFirstName}
+                            placeholder="First Name"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Last Name</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={lastName}
+                            onChangeText={setLastName}
+                            placeholder="Last Name"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Email (Cannot be changed)</Text>
+                        <TextInput
+                            style={[styles.input, styles.disabledInput]}
+                            value={user?.email || ''}
+                            editable={false}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Phone Number</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={phoneNumber}
+                            onChangeText={setPhoneNumber}
+                            placeholder="Phone Number"
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Delivery Address</Text>
+                        <TextInput
+                            style={[styles.input, styles.textArea]}
+                            value={address}
+                            onChangeText={setAddress}
+                            placeholder="Street Address"
+                            multiline
+                            numberOfLines={3}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>City</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={city}
+                            onChangeText={setCity}
+                            placeholder="City"
+                        />
+                    </View>
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.saveButton, isSubmitting && styles.disabledButton]}
+                    onPress={handleSave}
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? (
+                        <ActivityIndicator color="#FFF" />
+                    ) : (
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                    )}
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: 60,
+        paddingBottom: 20,
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    backButton: {
+        padding: 10,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: Theme.colors.deepBlue,
+    },
+    content: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+    avatarSection: {
+        alignItems: 'center',
+        marginBottom: 30,
+    },
+    avatarButton: {
+        position: 'relative',
+    },
+    avatarImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    avatarPlaceholder: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#F5F5F5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    cameraIcon: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        backgroundColor: Theme.colors.primary,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    avatarHelp: {
+        marginTop: 10,
+        fontSize: 12,
+        color: '#666',
+    },
+    form: {
+        marginBottom: 30,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 8,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 12,
+        padding: 15,
+        fontSize: 16,
+        color: '#000',
+    },
+    disabledInput: {
+        backgroundColor: '#F9F9F9',
+        color: '#999',
+    },
+    textArea: {
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
+    saveButton: {
+        backgroundColor: Theme.colors.primary,
+        padding: 18,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    disabledButton: {
+        opacity: 0.7,
+    },
+})

@@ -1,14 +1,35 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState, AppDispatch } from '../../src/store/store'
-import { logoutUser } from '../../src/store/slices/authSlice'
+import { useRouter, useFocusEffect } from 'expo-router'
+import { useSelector } from 'react-redux'
+import { RootState, AppDispatch, useAppDispatch } from '../../src/store/store'
+import { logoutUser, updateUser } from '../../src/store/slices/authSlice'
+import { userApi } from '../../src/lib/api'
+import { useCallback } from 'react'
 
 export default function ProfileScreen() {
   const router = useRouter()
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
   const { user } = useSelector((state: RootState) => state.auth)
+
+  // Fetch latest profile data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProfile = async () => {
+        if (user?.id) {
+          try {
+            const response = await userApi.getProfile(user.id)
+            if (response.data) {
+              dispatch(updateUser(response.data))
+            }
+          } catch (error) {
+            console.error('Failed to refresh profile:', error)
+          }
+        }
+      }
+      fetchProfile()
+    }, [user?.id])
+  )
 
   const handleLogout = () => {
     Alert.alert(
@@ -49,70 +70,93 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          {user.profilePicture ? (
-            <Image
-              source={{ uri: user.profilePicture }}
-              style={styles.avatarImage}
-            />
-          ) : (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user.firstName?.[0]?.toUpperCase() || ''}{user.lastName?.[0]?.toUpperCase() || ''}
-              </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.avatarContainer}>
+            {user.profilePicture ? (
+              <Image
+                source={{ uri: user.profilePicture }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user.firstName?.[0]?.toUpperCase() || ''}{user.lastName?.[0]?.toUpperCase() || ''}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.name}>
+            {user.firstName} {user.lastName}
+          </Text>
+          <Text style={styles.email}>{user.email}</Text>
+          {user.role && (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.name}>
-          {user.firstName} {user.lastName}
-        </Text>
-        <Text style={styles.email}>{user.email}</Text>
-        {user.role && (
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
-          </View>
-        )}
-      </View>
 
-      <ScrollView style={styles.content}>
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="person-outline" size={24} color="#000" />
-          <Text style={styles.menuText}>Edit Profile</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/edit-profile')}
+          >
+            <Ionicons name="person-outline" size={24} color="#000" />
+            <Text style={styles.menuText}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="location-outline" size={24} color="#000" />
-          <Text style={styles.menuText}>Addresses</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
+          {(user as any).phoneNumber && (
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={20} color="#666" />
+              <Text style={styles.infoText}>{(user as any).phoneNumber}</Text>
+            </View>
+          )}
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="card-outline" size={24} color="#000" />
-          <Text style={styles.menuText}>Payment Methods</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
+          {(user as any).address && (
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={20} color="#666" />
+              <Text style={styles.infoText}>{(user as any).address}</Text>
+            </View>
+          )}
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="settings-outline" size={24} color="#000" />
-          <Text style={styles.menuText}>Settings</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="location-outline" size={24} color="#000" />
+            <Text style={styles.menuText}>Addresses</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="help-circle-outline" size={24} color="#000" />
-          <Text style={styles.menuText}>Help & Support</Text>
-          <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="card-outline" size={24} color="#000" />
+            <Text style={styles.menuText}>Payment Methods</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.menuItem, styles.logoutItem]}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#FF0000" />
-          <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="settings-outline" size={24} color="#000" />
+            <Text style={styles.menuText}>Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="help-circle-outline" size={24} color="#000" />
+            <Text style={styles.menuText}>Help & Support</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, styles.logoutItem]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#FF0000" />
+            <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   )
@@ -122,13 +166,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingTop: 60,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
     padding: 30,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  menuContainer: {
+    padding: 20,
   },
   avatarContainer: {
     marginBottom: 15,
@@ -185,10 +238,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -211,5 +260,21 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#FF0000',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  infoText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: '#4B5563',
+    flex: 1,
   },
 })
