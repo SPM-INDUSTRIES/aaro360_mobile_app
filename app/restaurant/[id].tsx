@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useDispatch } from 'react-redux'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
+import AddToCartModal from '../../src/components/AddToCartModal'
+import { addItem } from '../../src/store/slices/cartSlice'
+import { CategoryType } from '../../src/types'
 
 interface FoodCategory {
   id: number
@@ -17,6 +21,14 @@ interface FoodAddon {
   price: number
 }
 
+interface FoodItemVariant {
+  id: number
+  name: string
+  price: number
+  quantity: number
+  isActive: boolean
+}
+
 interface FoodItem {
   id: number
   name: string
@@ -26,6 +38,7 @@ interface FoodItem {
   isAvailable: boolean
   category: FoodCategory
   addons: FoodAddon[]
+  variants?: FoodItemVariant[]
 }
 
 interface Restaurant {
@@ -40,6 +53,7 @@ interface Restaurant {
 export default function RestaurantDetailScreen() {
   const params = useLocalSearchParams()
   const router = useRouter()
+  const dispatch = useDispatch()
   const restaurantId = params.id as string
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
@@ -50,6 +64,8 @@ export default function RestaurantDetailScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -76,6 +92,51 @@ export default function RestaurantDetailScreen() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAddToCart = (item: FoodItem) => {
+    setSelectedItem(item)
+    setShowAddToCartModal(true)
+  }
+
+  const handleConfirmAddToCart = (quantity: number, selectedVariant?: FoodItemVariant, selectedAddons?: number[]) => {
+    if (!selectedItem) return
+
+    let itemName = selectedItem.name
+    let unitPrice = selectedVariant?.price || selectedItem.price
+
+    // Add variant name to item name
+    if (selectedVariant) {
+      itemName += ` (${selectedVariant.name})`
+    }
+
+    // Add addons to item name and price
+    if (selectedAddons && selectedAddons.length > 0) {
+      const addonNames = selectedAddons
+        .map(id => selectedItem.addons.find(a => a.id === id)?.name)
+        .filter(Boolean)
+        .join(', ')
+      itemName += ` with ${addonNames}`
+
+      const addonsTotal = selectedAddons.reduce((sum, id) => {
+        const addon = selectedItem.addons.find(a => a.id === id)
+        return sum + (addon?.price || 0)
+      }, 0)
+      unitPrice += addonsTotal
+    }
+
+    // Determine item type based on category
+    const itemType = selectedItem.category.name.toLowerCase().includes('grocery')
+      ? CategoryType.GROCERY
+      : CategoryType.FOOD
+
+    dispatch(addItem({
+      itemName,
+      itemType,
+      quantity,
+      unitPrice,
+      restaurantId: parseInt(restaurantId),
+    }))
   }
 
   const filteredItems = foodItems.filter((item) => {
@@ -278,7 +339,13 @@ export default function RestaurantDetailScreen() {
                   )}
                   <View style={styles.foodFooter}>
                     <Text style={styles.foodPrice}>රු{Number(item.price || 0).toFixed(2)}</Text>
-                    <TouchableOpacity style={styles.addButton}>
+                    <TouchableOpacity
+                      style={styles.addButton}
+                      onPress={(e) => {
+                        e.stopPropagation()
+                        handleAddToCart(item)
+                      }}
+                    >
                       <Ionicons name="add" size={20} color="#FFF" />
                     </TouchableOpacity>
                   </View>
@@ -296,6 +363,12 @@ export default function RestaurantDetailScreen() {
           </View>
         </ScrollView>
       )}
+      <AddToCartModal
+        visible={showAddToCartModal}
+        onClose={() => setShowAddToCartModal(false)}
+        item={selectedItem}
+        onAddToCart={handleConfirmAddToCart}
+      />
       <FloatingCartButton />
     </>
   )
