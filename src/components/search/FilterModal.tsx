@@ -6,16 +6,21 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  TextInput,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { ProductCategory } from '../../types/product'
+import { Theme } from '../../styles/theme'
 
 interface FilterModalProps {
   visible: boolean
   onClose: () => void
   filters: {
     rating: number
-    mealType: string
     brand: string
+    category: string
+    minPrice: string
+    maxPrice: string
   }
   onApplyFilters: (filters: any) => void
 }
@@ -36,8 +41,10 @@ export default function FilterModal({
   const handleReset = () => {
     setLocalFilters({
       rating: 0,
-      mealType: '',
       brand: '',
+      category: '',
+      minPrice: '',
+      maxPrice: '',
     })
   }
 
@@ -58,6 +65,66 @@ export default function FilterModal({
           </View>
 
           <ScrollView style={styles.modalBody}>
+            {/* Category */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterLabel}>Category</Text>
+              <View style={styles.optionsContainer}>
+                {[
+                  { id: '', name: 'All' },
+                  { id: ProductCategory.FOOD, name: 'Food' },
+                  { id: ProductCategory.GROCERY, name: 'Grocery' },
+                  { id: ProductCategory.MEDICINE, name: 'Medicine' }
+                ].map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.optionButton,
+                      localFilters.category === cat.id && styles.optionButtonActive,
+                    ]}
+                    onPress={() =>
+                      setLocalFilters({
+                        ...localFilters,
+                        category: cat.id,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        localFilters.category === cat.id && styles.optionTextActive,
+                      ]}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Range */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterLabel}>Price Range (රු)</Text>
+              <View style={styles.priceInputsRow}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Min"
+                  value={localFilters.minPrice}
+                  onChangeText={(text) => setLocalFilters({ ...localFilters, minPrice: text })}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+                <View style={styles.priceDash} />
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Max"
+                  value={localFilters.maxPrice}
+                  onChangeText={(text) => setLocalFilters({ ...localFilters, maxPrice: text })}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            </View>
+
             {/* Rating */}
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Minimum Rating</Text>
@@ -89,36 +156,6 @@ export default function FilterModal({
               </View>
             </View>
 
-            {/* Meal Type */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>Meal Type</Text>
-              <View style={styles.optionsContainer}>
-                {['Breakfast', 'Lunch', 'Dinner'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.optionButton,
-                      localFilters.mealType === type && styles.optionButtonActive,
-                    ]}
-                    onPress={() =>
-                      setLocalFilters({
-                        ...localFilters,
-                        mealType: localFilters.mealType === type ? '' : type,
-                      })
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        localFilters.mealType === type && styles.optionTextActive,
-                      ]}
-                    >
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -145,7 +182,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -193,7 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   ratingTextActive: {
-    // No change needed, visual feedback from background
+    // No change needed
   },
   optionsContainer: {
     flexDirection: 'row',
@@ -209,16 +246,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   optionButtonActive: {
-    borderColor: '#FFD700',
-    backgroundColor: '#FFF9E6',
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.orangeLight,
   },
   optionText: {
     fontSize: 14,
     color: '#666',
   },
   optionTextActive: {
-    color: '#000000',
+    color: Theme.colors.primary,
     fontWeight: '600',
+  },
+  priceInputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  priceInput: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#000',
+    backgroundColor: '#F9F9F9',
+  },
+  priceDash: {
+    width: 15,
+    height: 1,
+    backgroundColor: '#CCC',
   },
   modalFooter: {
     flexDirection: 'row',
@@ -226,6 +284,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
     gap: 10,
+    paddingBottom: 30,
   },
   resetButton: {
     flex: 1,
@@ -244,12 +303,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     borderRadius: 12,
-    backgroundColor: '#000000',
+    backgroundColor: Theme.colors.primary,
     alignItems: 'center',
   },
   applyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFD700',
+    color: '#FFF',
   },
 })

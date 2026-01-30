@@ -2,6 +2,8 @@ export enum ProductCategory {
   FOOD = 'food',
   GROCERY = 'grocery',
   MEDICINE = 'medicine',
+  ECHANELLING = 'echannelling',
+  VEHICLE = 'vehicle',
 }
 
 export interface Product {
@@ -30,6 +32,7 @@ export interface Product {
   averageRating: number;
   isFeatured: boolean;
   discountPrice?: number;
+  orderCount?: number;
   createdAt: string;
   updatedAt: string;
 }

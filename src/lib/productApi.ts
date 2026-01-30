@@ -25,6 +25,7 @@ export const productApi = {
       stock: Number(product.stock) || 0,
       reviewCount: Number(product.reviewCount) || 0,
       averageRating: Number(product.averageRating) || 0,
+      orderCount: Number(product.orderCount || product.orders_count) || 0,
     };
   },
 

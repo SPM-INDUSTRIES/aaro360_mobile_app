@@ -5,14 +5,26 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#F59E0B', // Orange from logo
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#f59f0a',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopColor: '#E0E0E0',
+          borderTopColor: 'rgba(0,0,0,0.05)',
           borderTopWidth: 1,
+          height: 65,
+          paddingBottom: 12,
+          paddingTop: 8,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
         },
-        headerShown: false, // Remove all page titles
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+        },
+        headerShown: false,
       }}
     >
       <Tabs.Screen
@@ -25,14 +37,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="cart"
-        options={{
-          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
-          tabBarLabel: 'Cart',
+          tabBarIcon: ({ color }) => <Ionicons name="search" size={24} color={color} />,
+          tabBarLabel: 'Explore',
         }}
       />
       <Tabs.Screen
@@ -43,10 +49,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="cart"
+        options={{
+          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
+          tabBarLabel: 'Cart',
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
-          tabBarLabel: 'Profile',
+          href: null,
         }}
       />
     </Tabs>

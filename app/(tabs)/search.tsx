@@ -2,32 +2,41 @@ import { useState, useEffect } from 'react'
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, SafeAreaView, Platform, StatusBar, Alert } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useDispatch } from 'react-redux'
+import { useAppDispatch } from '../../src/store/store'
 import FilterModal from '../../src/components/search/FilterModal'
 import { productApi } from '../../src/lib/productApi'
 import { Product, ProductCategory } from '../../src/types/product'
-import { addItem } from '../../src/store/slices/cartSlice'
+import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
+import { API_URL } from '../../src/lib/api'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || '${process.env.EXPO_PUBLIC_API_URL}'
 
 export default function SearchScreen() {
   const router = useRouter()
-  const dispatch = useDispatch()
-  const { category, isFeatured } = useLocalSearchParams()
+  const dispatch = useAppDispatch()
+  const { category: initialCategory, isFeatured } = useLocalSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
     rating: 0,
-    mealType: '',
     brand: '',
+    category: (initialCategory as string) || '',
+    minPrice: '',
+    maxPrice: '',
   })
+
+  useEffect(() => {
+    if (initialCategory) {
+      setFilters(prev => ({ ...prev, category: initialCategory as string }))
+    }
+  }, [initialCategory])
 
   const handleAddToCart = (product: Product, e: any) => {
     e.stopPropagation()
-    
+
     // Determine item type based on category
     let itemType: CategoryType
     if (product.category === ProductCategory.FOOD) {
@@ -37,7 +46,7 @@ export default function SearchScreen() {
     } else {
       itemType = CategoryType.MEDICINE
     }
-    
+
     // Get restaurant ID if it's a food item
     let restaurantId: number | undefined
     if (typeof product.id === 'string' && product.id.startsWith('food-')) {
@@ -47,62 +56,56 @@ export default function SearchScreen() {
         restaurantId = undefined // We'll need to fetch or store this differently
       }
     }
-    
-    // Add item to cart
-    dispatch(addItem({
+
+    // Add item to cart - floating cart button will show the count
+    dispatch(addItemToCart({
       itemName: product.name,
       itemType: itemType,
       quantity: 1,
       unitPrice: Number(product.price || 0),
       restaurantId: restaurantId,
     }))
-    
-    // Show success message
-    Alert.alert(
-      'Added to Cart',
-      `${product.name} has been added to your cart`,
-      [
-        { text: 'Continue Shopping', style: 'cancel' },
-        { text: 'View Cart', onPress: () => router.push('/cart') }
-      ]
-    )
+      .unwrap()
+      .catch((error) => {
+        Alert.alert('Error', error || 'Failed to add item to cart')
+      })
   }
 
   useEffect(() => {
-    if (searchQuery.length > 0) {
-      // If there's a search query, search across all products and food items
-      fetchSearchResults()
-    } else if (category || isFeatured) {
-      // If no search query but category/featured is selected, show category products
-      fetchProductsByCategory()
-    } else {
-      setProducts([])
-    }
-  }, [category, isFeatured, searchQuery, filters])
+    // We always search/explore, but filters.category now overrides the initialCategory param
+    fetchSearchResults()
+  }, [searchQuery, filters, isFeatured])
 
   const applyFilters = (products: Product[]): Product[] => {
     let filtered = [...products]
-    
+
+    // Filter by category
+    if (filters.category) {
+      filtered = filtered.filter(p => p.category === filters.category)
+    }
+
+    // Filter by min price
+    if (filters.minPrice) {
+      const min = parseFloat(filters.minPrice)
+      if (!isNaN(min)) {
+        filtered = filtered.filter(p => p.price >= min)
+      }
+    }
+
+    // Filter by max price
+    if (filters.maxPrice) {
+      const max = parseFloat(filters.maxPrice)
+      if (!isNaN(max)) {
+        filtered = filtered.filter(p => p.price <= max)
+      }
+    }
+
     // Filter by rating
     if (filters.rating > 0) {
       filtered = filtered.filter(p => (p.averageRating || 0) >= filters.rating)
     }
-    
-    // Filter by meal type (map to subCategory for food items)
-    if (filters.mealType) {
-      filtered = filtered.filter(p => {
-        // Check if subCategory matches meal type
-        if (p.subCategory?.toLowerCase().includes(filters.mealType.toLowerCase())) {
-          return true
-        }
-        // Check if tags include meal type
-        if (p.tags?.some(tag => tag.toLowerCase().includes(filters.mealType.toLowerCase()))) {
-          return true
-        }
-        return false
-      })
-    }
-    
+
+
     // Filter by brand
     if (filters.brand) {
       filtered = filtered.filter(p => {
@@ -112,7 +115,7 @@ export default function SearchScreen() {
         return brandMatch || vendorMatch || restaurantMatch
       })
     }
-    
+
     return filtered
   }
 
@@ -120,12 +123,12 @@ export default function SearchScreen() {
     try {
       setLoading(true)
       let fetchedProducts: Product[] = []
-      
+
       if (isFeatured === 'true') {
         fetchedProducts = await productApi.getFeatured(50)
-      } else if (category) {
-        const categoryType = category as ProductCategory
-        
+      } else if (filters.category) {
+        const categoryType = filters.category as ProductCategory
+
         // For Food and Grocery, also fetch from food_items table
         if (categoryType === ProductCategory.FOOD || categoryType === ProductCategory.GROCERY) {
           try {
@@ -133,13 +136,13 @@ export default function SearchScreen() {
             const foodItemsResponse = await fetch(`${API_URL}/food-items`)
             const foodItemsData = await foodItemsResponse.json()
             const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
-            
+
             // Filter by category type
             const categoryTypeFilter = categoryType === ProductCategory.FOOD ? 'food' : 'grocery'
-            const filteredItems = foodItems.filter((item: any) => 
+            const filteredItems = foodItems.filter((item: any) =>
               item.category?.type === categoryTypeFilter && item.isAvailable
             )
-            
+
             // Convert food items to product format
             const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
               id: `food-${item.id}`,
@@ -165,13 +168,13 @@ export default function SearchScreen() {
               createdAt: item.createdAt,
               updatedAt: item.updatedAt,
             }))
-            
+
             fetchedProducts = [...itemsAsProducts]
           } catch (error) {
             console.error(`Failed to fetch ${categoryType} items:`, error)
           }
         }
-        
+
         // Also fetch from products table
         try {
           const productsFromTable = await productApi.getByCategory(categoryType, 100)
@@ -179,16 +182,16 @@ export default function SearchScreen() {
         } catch (error) {
           console.error('Failed to fetch products:', error)
         }
-        
+
         // Remove duplicates based on id
         fetchedProducts = fetchedProducts.filter((product, index, self) =>
           index === self.findIndex((p) => p.id === product.id)
         )
       }
-      
+
       // Apply filters
       fetchedProducts = applyFilters(fetchedProducts)
-      
+
       setProducts(fetchedProducts)
     } catch (error) {
       console.error('Failed to fetch products:', error)
@@ -202,7 +205,7 @@ export default function SearchScreen() {
     try {
       setLoading(true)
       let allProducts: Product[] = []
-      
+
       // Search in products table
       try {
         const response = await productApi.getAll({
@@ -211,43 +214,43 @@ export default function SearchScreen() {
           limit: 100,
         })
         allProducts = response.data || []
-        
+
         // If category is selected, filter by category
-        if (category) {
-          const categoryType = category as ProductCategory
+        if (filters.category) {
+          const categoryType = filters.category as ProductCategory
           allProducts = allProducts.filter(p => p.category === categoryType)
         }
       } catch (error) {
         console.error('Failed to search products:', error)
       }
-      
+
       // Also search in food_items table for food and grocery items
       try {
         const foodItemsResponse = await fetch(`${API_URL}/food-items`)
         const foodItemsData = await foodItemsResponse.json()
         const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
-        
+
         // Filter by search query (case-insensitive search in name and description)
         const searchLower = searchQuery.toLowerCase()
         let filteredItems = foodItems.filter((item: any) => {
-          const matchesSearch = 
+          const matchesSearch =
             item.name?.toLowerCase().includes(searchLower) ||
             item.description?.toLowerCase().includes(searchLower)
           return matchesSearch && item.isAvailable
         })
-        
+
         // If category is selected, also filter by category type
-        if (category) {
-          const categoryType = category as ProductCategory
-          const categoryTypeFilter = categoryType === ProductCategory.FOOD ? 'food' : 
-                                     categoryType === ProductCategory.GROCERY ? 'grocery' : null
+        if (filters.category) {
+          const categoryType = filters.category as ProductCategory
+          const categoryTypeFilter = categoryType === ProductCategory.FOOD ? 'food' :
+            categoryType === ProductCategory.GROCERY ? 'grocery' : null
           if (categoryTypeFilter) {
-            filteredItems = filteredItems.filter((item: any) => 
+            filteredItems = filteredItems.filter((item: any) =>
               item.category?.type === categoryTypeFilter
             )
           }
         }
-        
+
         // Convert food items to product format
         const itemsAsProducts: Product[] = filteredItems.map((item: any) => {
           // Determine category based on food category type
@@ -257,7 +260,7 @@ export default function SearchScreen() {
           } else if (item.category?.type === 'food') {
             productCategory = ProductCategory.FOOD
           }
-          
+
           return {
             id: `food-${item.id}`,
             name: item.name,
@@ -283,20 +286,20 @@ export default function SearchScreen() {
             updatedAt: item.updatedAt,
           }
         })
-        
+
         allProducts = [...allProducts, ...itemsAsProducts]
       } catch (error) {
         console.error('Failed to search food items:', error)
       }
-      
+
       // Remove duplicates based on id
       const uniqueProducts = allProducts.filter((product, index, self) =>
         index === self.findIndex((p) => p.id === product.id)
       )
-      
+
       // Apply filters
       const filteredProducts = applyFilters(uniqueProducts)
-      
+
       setProducts(filteredProducts)
     } catch (error) {
       console.error('Failed to search:', error)
@@ -311,11 +314,11 @@ export default function SearchScreen() {
   }
 
   const getCategoryTitle = () => {
-    if (category === ProductCategory.FOOD) return 'Food Products'
-    if (category === ProductCategory.GROCERY) return 'Grocery Products'
-    if (category === ProductCategory.MEDICINE) return 'Medicine Products'
+    if (filters.category === ProductCategory.FOOD) return 'Food Products'
+    if (filters.category === ProductCategory.GROCERY) return 'Grocery Products'
+    if (filters.category === ProductCategory.MEDICINE) return 'Medicine Products'
     if (isFeatured === 'true') return 'Featured Products'
-    return 'Search Products'
+    return 'Explore All Products'
   }
 
   return (
@@ -323,36 +326,34 @@ export default function SearchScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       {/* Search Header */}
       <View style={styles.searchHeader}>
-          {category && (
-            <View style={styles.categoryTitleContainer}>
-              <Text style={styles.categoryTitle}>{getCategoryTitle()}</Text>
-            </View>
-          )}
-          <View style={styles.searchRow}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={category ? `Search ${category}...` : "Search for Pizza, Painkiller, etc..."}
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={handleSearch}
-                autoFocus={!category}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setShowFilters(true)}
-            >
-              <Ionicons name="options" size={24} color="#F59E0B" />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.categoryTitleContainer}>
+          <Text style={styles.categoryTitle}>{getCategoryTitle()}</Text>
         </View>
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={filters.category ? `Search ${filters.category}...` : "Search for Pizza, Painkiller, etc..."}
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={handleSearch}
+              autoFocus={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilters(true)}
+          >
+            <Ionicons name="options" size={24} color="#F59E0B" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Search Results */}
       <ScrollView style={styles.results}>
@@ -384,8 +385,8 @@ export default function SearchScreen() {
               >
                 <View style={styles.productImageContainer}>
                   {product.mainImage ? (
-                    <Image 
-                      source={{ uri: product.mainImage }} 
+                    <Image
+                      source={{ uri: product.mainImage }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />
@@ -416,7 +417,7 @@ export default function SearchScreen() {
                         </Text>
                       )}
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.addButton}
                       onPress={(e) => handleAddToCart(product, e)}
                     >
@@ -427,12 +428,12 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        ) : searchQuery.length === 0 && !category && !isFeatured ? (
+        ) : searchQuery.length === 0 && !filters.category && !isFeatured ? (
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={64} color="#CCC" />
-            <Text style={styles.emptyText}>Start typing to search...</Text>
+            <Ionicons name="compass-outline" size={64} color="#CCC" />
+            <Text style={styles.emptyText}>Exploring Products...</Text>
             <Text style={styles.emptySubtext}>
-              Search for food, groceries, or medicines
+              No products available at the moment.
             </Text>
           </View>
         ) : (
@@ -452,6 +453,7 @@ export default function SearchScreen() {
         filters={filters}
         onApplyFilters={setFilters}
       />
+      <FloatingCartButton />
     </View>
   )
 }

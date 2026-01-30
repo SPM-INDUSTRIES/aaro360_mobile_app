@@ -17,6 +17,8 @@ export enum CategoryType {
   FOOD = 'food',
   GROCERY = 'grocery',
   MEDICINE = 'medicine',
+  ECHANELLING = 'echannelling',
+  VEHICLE = 'vehicle',
 }
 
 export interface User {
@@ -58,6 +60,7 @@ export interface Order {
 }
 
 export interface CartItem {
+  id?: number
   itemName: string
   itemType: CategoryType
   quantity: number

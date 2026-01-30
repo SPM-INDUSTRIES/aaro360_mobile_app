@@ -1,18 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions, Linking, RefreshControl } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { CategoryType } from '../../src/types'
 import { Product, ProductCategory } from '../../src/types/product'
 import { productApi } from '../../src/lib/productApi'
 import { offerApi, Offer } from '../../src/lib/offerApi'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Theme } from '../../src/styles/theme'
+import { Skeleton } from '../../src/components/SkeletonLoader'
 
 const { width: screenWidth } = Dimensions.get('window')
 
 const categories = [
-  { id: 1, name: 'Food', type: CategoryType.FOOD, apiType: ProductCategory.FOOD, icon: '🍕', color: '#1E3A8A' },
-  { id: 2, name: 'Grocery', type: CategoryType.GROCERY, apiType: ProductCategory.GROCERY, icon: '🛒', color: '#F59E0B' },
-  { id: 3, name: 'eChannelling', type: CategoryType.MEDICINE, apiType: ProductCategory.MEDICINE, icon: '💊', color: '#8B5CF6' },
+  { id: 1, name: 'Food', type: CategoryType.FOOD, apiType: ProductCategory.FOOD, icon: '🍔', color: '#FFFFFF' },
+  { id: 2, name: 'Grocery', type: CategoryType.GROCERY, apiType: ProductCategory.GROCERY, icon: '🛒', color: '#FFFFFF' },
+  { id: 3, name: 'eChannelling', type: CategoryType.ECHANELLING, apiType: ProductCategory.ECHANELLING, icon: '📅', color: '#FFFFFF' },
+  { id: 4, name: 'Pharmacy', type: CategoryType.MEDICINE, apiType: ProductCategory.MEDICINE, icon: '💊', color: '#FFFFFF' },
+  { id: 5, name: 'Vehicle', type: CategoryType.VEHICLE, apiType: ProductCategory.VEHICLE, icon: '🚗', color: '#FFFFFF' },
 ]
 
 // Vendor interface
@@ -89,7 +95,7 @@ export default function HomeScreen() {
       // Refresh offers
       const offers = await offerApi.getCarousel()
       setSpecialOffers(offers || [])
-      
+
       // Refresh category data if category is selected
       if (selectedCategory) {
         await fetchCategoryData(selectedCategory)
@@ -104,27 +110,25 @@ export default function HomeScreen() {
   const fetchCategoryData = async (category: ProductCategory) => {
     try {
       setLoading(true)
-      
-      if (category === ProductCategory.MEDICINE) {
-        // For medicine, fetch hospitals/pharmacies
+
+      if (category === ProductCategory.ECHANELLING) {
+        // For medicine/Pharmacy, fetch hospitals/pharmacies
         const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=pharmacy`)
         const vendors = await response.json()
-        // Vendors API returns array directly, not wrapped in data
         setHospitals(Array.isArray(vendors) ? vendors : vendors.data || [])
         setTrendingBrands([])
         setAllOffers([])
         setBestOffers([])
         setFoodCategories([])
-      } else {
+      } else if (category === ProductCategory.FOOD || category === ProductCategory.GROCERY) {
         // For Food and Grocery
         const vendorType = category === ProductCategory.FOOD ? 'restaurant' : 'grocery_store'
-        
+
         // Fetch vendors (restaurants/stores) for Trending Brands
         const vendorsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=${vendorType}`)
         const vendorsData = await vendorsResponse.json()
-        // Vendors API returns array directly, not wrapped in data
         setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData.data || [])
-        
+
         // Fetch food categories if Food is selected
         if (category === ProductCategory.FOOD) {
           const categoriesResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=food`)
@@ -133,56 +137,55 @@ export default function HomeScreen() {
         } else {
           setFoodCategories([])
         }
-        
+
         // Fetch products for All Offers
         let allProducts: Product[] = []
-        
+
         // For both Food and Grocery, fetch food_items from food_items table
-        if (category === ProductCategory.FOOD || category === ProductCategory.GROCERY) {
-          try {
-            // Fetch food items from food_items table
-            const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items`)
-            const foodItemsData = await foodItemsResponse.json()
-            const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
-            
-            // Filter by category type
-            const categoryType = category === ProductCategory.FOOD ? 'food' : 'grocery'
-            const filteredItems = foodItems.filter((item: any) => 
-              item.category?.type === categoryType && item.isAvailable
-            )
-            
-            // Convert food items to product format
-            const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
-              id: `food-${item.id}`,
-              name: item.name,
-              description: item.description || '',
-              category: category as ProductCategory,
-              subCategory: item.category?.name || '',
-              price: Number(item.price) || 0,
-              brand: '',
-              restaurant: item.restaurant?.name || '',
-              vendorId: item.restaurantId,
-              location: item.restaurant?.address || '',
-              mainImage: item.imageUrl || '',
-              images: [],
-              stock: item.quantity || (item.isAvailable ? 1 : 0),
-              inStock: item.isAvailable && (item.quantity || 0) > 0,
-              isActive: item.isAvailable,
-              tags: [],
-              isFeatured: false,
-              discountPrice: undefined,
-              reviewCount: 0,
-              averageRating: 0,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt,
-            }))
-            
-            allProducts = [...itemsAsProducts]
-          } catch (error) {
-            console.error(`Failed to fetch ${category} items:`, error)
-          }
+        try {
+          // Fetch food items from food_items table
+          const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items`)
+          const foodItemsData = await foodItemsResponse.json()
+          const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
+
+          // Filter by category type
+          const categoryType = category === ProductCategory.FOOD ? 'food' : 'grocery'
+          const filteredItems = foodItems.filter((item: any) =>
+            item.category?.type === categoryType && item.isAvailable
+          )
+
+          // Convert food items to product format
+          const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
+            id: `food-${item.id}`,
+            name: item.name,
+            description: item.description || '',
+            category: category as ProductCategory,
+            subCategory: item.category?.name || '',
+            price: Number(item.price) || 0,
+            brand: '',
+            restaurant: item.restaurant?.name || '',
+            vendorId: item.restaurantId,
+            location: item.restaurant?.address || '',
+            mainImage: item.imageUrl || '',
+            images: [],
+            stock: item.quantity || (item.isAvailable ? 1 : 0),
+            inStock: item.isAvailable && (item.quantity || 0) > 0,
+            isActive: item.isAvailable,
+            tags: [],
+            isFeatured: false,
+            discountPrice: undefined,
+            reviewCount: 0,
+            averageRating: 0,
+            orderCount: Number(item.orders_count || item.orderCount) || 0,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+          }))
+
+          allProducts = [...itemsAsProducts]
+        } catch (error) {
+          console.error(`Failed to fetch ${category} items:`, error)
         }
-        
+
         // Also fetch from products table
         try {
           const productsResponse = await productApi.getAll({
@@ -195,20 +198,25 @@ export default function HomeScreen() {
         } catch (error) {
           console.error('Failed to fetch products:', error)
         }
-        
+
         // Remove duplicates based on id
         const uniqueProducts = allProducts.filter((product, index, self) =>
           index === self.findIndex((p) => p.id === product.id)
         )
-        
+
+        // Apply sorting by order count (descending)
+        const sortedProducts = uniqueProducts.sort((a, b) =>
+          (b.orderCount || 0) - (a.orderCount || 0)
+        )
+
         // Apply pagination
         const startIndex = (currentPage - 1) * 10
         const endIndex = startIndex + 10
-        const paginatedProducts = uniqueProducts.slice(startIndex, endIndex)
-        
+        const paginatedProducts = sortedProducts.slice(startIndex, endIndex)
+
         setAllOffers(paginatedProducts)
         setTotalPages(Math.ceil(uniqueProducts.length / 10))
-        
+
         // Fetch best offers (featured products)
         try {
           const featured = await productApi.getFeatured(6)
@@ -217,8 +225,22 @@ export default function HomeScreen() {
           console.error('Failed to fetch featured products:', error)
           setBestOffers([])
         }
-        
+
         setHospitals([])
+      } else if (category === ProductCategory.MEDICINE) {
+        // Placeholder for Medicine/Pharmacy - No data yet or different logic
+        setHospitals([])
+        setTrendingBrands([])
+        setAllOffers([])
+        setBestOffers([])
+        setFoodCategories([])
+      } else {
+        // Handle other categories (eChanneling, Vehicle) - No data yet
+        setHospitals([])
+        setTrendingBrands([])
+        setAllOffers([])
+        setBestOffers([])
+        setFoodCategories([])
       }
     } catch (error) {
       console.error('Failed to fetch category data:', error)
@@ -228,11 +250,8 @@ export default function HomeScreen() {
   }
 
   const handleCategoryPress = (category: ProductCategory) => {
-    // Navigate to search/products screen with category filter
-    router.push({
-      pathname: '/(tabs)/search',
-      params: { category: category },
-    })
+    setSelectedCategory(category)
+    setCurrentPage(1)
   }
 
   const handleCallHospital = (phone: string) => {
@@ -247,26 +266,25 @@ export default function HomeScreen() {
     setCurrentOfferIndex(index)
   }
 
-  // Filter offers based on selected category
   const getFilteredOffers = (): Offer[] => {
     if (!selectedCategory) {
-      // If no category selected, show all offers
       return specialOffers
     }
 
     return specialOffers.filter((offer) => {
-      // If offer has no linkType, show it in all categories (general offers)
-      if (!offer.linkType) {
-        return true
-      }
-
-      // Filter based on category
+      // Apply strict filtering based on category
       if (selectedCategory === ProductCategory.FOOD) {
+        // ONLY show food specific offers in food tab
         return offer.linkType === 'food_restaurant' || offer.linkType === 'food_item'
       } else if (selectedCategory === ProductCategory.GROCERY) {
-        return offer.linkType === 'grocery_product'
+        // Show grocery specific offers AND general offers in grocery tab
+        return !offer.linkType || offer.linkType === 'grocery_product'
       } else if (selectedCategory === ProductCategory.MEDICINE) {
         return offer.linkType === 'medicine_product'
+      } else if (selectedCategory === ProductCategory.ECHANELLING) {
+        return offer.linkType === 'echanelling_service'
+      } else if (selectedCategory === ProductCategory.VEHICLE) {
+        return offer.linkType === 'vehicle_service'
       }
 
       return false
@@ -275,12 +293,21 @@ export default function HomeScreen() {
 
   // Render Special Offers Carousel (from offers table)
   const renderSpecialOffersCarousel = () => {
+    if (selectedCategory === ProductCategory.VEHICLE) return null
     const filteredOffers = getFilteredOffers()
     if (filteredOffers.length === 0) return null
 
     return (
       <View style={styles.specialOffersSection}>
-        <Text style={styles.sectionTitle}>Special Offers</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Special Offers</Text>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/special-offers',
+            params: { category: selectedCategory }
+          })}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView
           ref={offersScrollRef}
           horizontal
@@ -288,6 +315,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleOfferScroll}
           style={styles.offersCarousel}
+          contentContainerStyle={{ paddingLeft: 20, paddingRight: 0 }}
         >
           {filteredOffers.map((offer, index) => (
             <TouchableOpacity
@@ -299,6 +327,12 @@ export default function HomeScreen() {
                 }
               }}
             >
+              <LinearGradient
+                colors={['#1E3A8A', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
               {offer.imageUrl ? (
                 <Image
                   source={{ uri: offer.imageUrl }}
@@ -310,6 +344,10 @@ export default function HomeScreen() {
                   <Text style={styles.placeholderEmoji}>🎁</Text>
                 </View>
               )}
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                style={styles.offerGradientOverlay}
+              />
               <View style={styles.offerOverlay}>
                 {offer.title && (
                   <Text style={styles.offerTitle}>{offer.title}</Text>
@@ -348,7 +386,10 @@ export default function HomeScreen() {
       <View style={styles.foodCategoriesSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Food Categories</Text>
-          <TouchableOpacity onPress={() => router.push('/food-categories')}>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/food-categories',
+            params: { category: selectedCategory }
+          })}>
             <Text style={styles.seeAllText}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -378,9 +419,8 @@ export default function HomeScreen() {
     )
   }
 
-  // Render Trending Brands (Restaurants/Stores)
   const renderTrendingBrands = () => {
-    if (!selectedCategory || selectedCategory === ProductCategory.MEDICINE || trendingBrands.length === 0) return null
+    if (!selectedCategory || selectedCategory === ProductCategory.MEDICINE || selectedCategory === ProductCategory.VEHICLE || trendingBrands.length === 0) return null
 
     const sectionTitle = selectedCategory === ProductCategory.FOOD ? 'Your Favourite Restaurants' : 'Popular Stores'
 
@@ -388,7 +428,10 @@ export default function HomeScreen() {
       <View style={styles.trendingBrandsSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-          <TouchableOpacity onPress={() => router.push('/restaurants')}>
+          <TouchableOpacity onPress={() => router.push({
+            pathname: '/restaurants',
+            params: { category: selectedCategory }
+          })}>
             <Text style={styles.seeAllText}>View More</Text>
           </TouchableOpacity>
         </View>
@@ -406,7 +449,7 @@ export default function HomeScreen() {
                   <Text style={styles.brandPlaceholder}>{brand.name.charAt(0)}</Text>
                 </View>
               )}
-              <Text style={styles.brandName} numberOfLines={1}>{brand.name}</Text>
+              <Text style={styles.brandName} numberOfLines={2}>{brand.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -414,20 +457,22 @@ export default function HomeScreen() {
     )
   }
 
-  // Render All Offers with Pagination
   const renderAllOffers = () => {
-    if (!selectedCategory || selectedCategory === ProductCategory.MEDICINE) return null
+    if (!selectedCategory ||
+      selectedCategory === ProductCategory.MEDICINE ||
+      selectedCategory === ProductCategory.VEHICLE ||
+      selectedCategory === ProductCategory.ECHANELLING) return null
 
     return (
       <View style={styles.allOffersSection}>
-        <Text style={styles.sectionTitle}>All Offers</Text>
+        <Text style={styles.sectionTitle}>Top Orders</Text>
         {loading ? (
-          <ActivityIndicator size="large" color="#0066FF" style={styles.loader} />
+          <ActivityIndicator size="large" color={Theme.colors.primary} style={styles.loader} />
         ) : allOffers.length > 0 ? (
           <>
             {allOffers.map((offer) => (
-              <TouchableOpacity 
-                key={offer.id} 
+              <TouchableOpacity
+                key={offer.id}
                 style={styles.allOfferCard}
                 onPress={() => {
                   // Check if it's a food item (ID starts with "food-")
@@ -449,7 +494,11 @@ export default function HomeScreen() {
                 )}
                 <View style={styles.allOfferContent}>
                   <Text style={styles.allOfferName}>{offer.name}</Text>
-                  <Text style={styles.allOfferSubtext}>Special Offers</Text>
+                  <Text style={styles.allOfferSubtext}>
+                    {offer.orderCount && offer.orderCount > 0
+                      ? `${offer.orderCount} orders recently`
+                      : 'Most Popular'}
+                  </Text>
                   <View style={styles.allOfferTags}>
                     <View style={styles.newTag}>
                       <Text style={styles.newTagText}>NEW</Text>
@@ -499,7 +548,7 @@ export default function HomeScreen() {
 
   // Render Hospitals (Medicine category)
   const renderHospitals = () => {
-    if (selectedCategory !== ProductCategory.MEDICINE || hospitals.length === 0) return null
+    if (selectedCategory !== ProductCategory.ECHANELLING || hospitals.length === 0) return null
 
     return (
       <View style={styles.hospitalsSection}>
@@ -510,7 +559,7 @@ export default function HomeScreen() {
             const imageUrl = hospital.coverImageUrl || hospital.logoUrl;
             // Handle both URL and base64 images
             const isValidImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('/'));
-            
+
             return (
               <TouchableOpacity
                 key={hospital.id}
@@ -518,8 +567,8 @@ export default function HomeScreen() {
                 onPress={() => hospital.phone && handleCallHospital(hospital.phone)}
               >
                 {isValidImage ? (
-                  <Image 
-                    source={{ uri: imageUrl }} 
+                  <Image
+                    source={{ uri: imageUrl }}
                     style={styles.hospitalImage}
                     resizeMode="cover"
                     onError={(error) => {
@@ -532,21 +581,21 @@ export default function HomeScreen() {
                     <Ionicons name="medical" size={40} color="#8B5CF6" />
                   </View>
                 )}
-              <View style={styles.hospitalInfo}>
-                <Text style={styles.hospitalName}>{hospital.name}</Text>
-                {hospital.address && (
-                  <Text style={styles.hospitalAddress} numberOfLines={2}>{hospital.address}</Text>
-                )}
-                {hospital.phone && (
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => handleCallHospital(hospital.phone!)}
-                  >
-                    <Ionicons name="call" size={20} color="#FFF" />
-                    <Text style={styles.callButtonText}>Call {hospital.phone}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                <View style={styles.hospitalInfo}>
+                  <Text style={styles.hospitalName}>{hospital.name}</Text>
+                  {hospital.address && (
+                    <Text style={styles.hospitalAddress} numberOfLines={2}>{hospital.address}</Text>
+                  )}
+                  {hospital.phone && (
+                    <TouchableOpacity
+                      style={styles.callButton}
+                      onPress={() => handleCallHospital(hospital.phone!)}
+                    >
+                      <Ionicons name="call" size={20} color="#FFF" />
+                      <Text style={styles.callButtonText}>Call {hospital.phone}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </TouchableOpacity>
             )
           })}
@@ -555,20 +604,49 @@ export default function HomeScreen() {
     )
   }
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Image 
-          source={require('../../assets/logo.png')} 
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </View>
+  // Render Coming Soon
+  const renderComingSoon = () => {
+    const isVehicle = selectedCategory === ProductCategory.VEHICLE
+    const isPharmacy = selectedCategory === ProductCategory.MEDICINE
 
-      <ScrollView 
-        style={styles.content} 
+    if (!isVehicle && !isPharmacy) return null
+
+    const content = isVehicle ? {
+      title: "Vehicle Services\nComing Soon",
+      subtext: "We are working hard to bring on-demand transportation and delivery to your doorstep.",
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFzv4fQC0XdC0BsMjV359i3b0egth0nWnnYOMlJU05_ZJkYWjrVbUiSs8bwEkNBz8r2kA2rZgYECMpfiBMJ_zTiudDdIawbD0mjQhzdYW4zjKQ_6AtosChpsTm0_B_dCNxUC2lzKqVTzw3qBjymdj568YUQ-peq1sK_MByJVYXVcNaL7ZjvDSSPkfWhPPudO4MOlaj0Y3mH3ynBjixta6uDNdqeh6hX7NP00dmkoEuEP3BS_ob-3VHjK8L6cn0VB7YdZgnRPIE6lM'
+    } : {
+      title: "Pharmacy Delivery\nComing Soon",
+      subtext: "Your wellness is our priority. Get ready for quick medicine delivery directly to your door.",
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCwvVsKZsYK9tDOPP0rYJBDqWFU2VmGAQ3qUXwHJpiWtHGeJuqnXDv8NCaBUUGBXIJsdGrMDmQiPMYDecIzTb0AcKF1lDzZniSs8N1wbVhOwllB2Nmax93ii_xgmICQd2vz-4kcMGECUC5lK3fYp3b7Pj7XJ9D2UXUqp239z5n1eo8TbXm_oRyjTRUp3v8lgLNmbeLbXJi9BGrG_5Xem_d0Opwd7iIiMy-FjaMgS9cH3V8YbCdalSp4QFdj8ZwZajYQJxksTbUMS1A'
+    }
+
+    return (
+      <View style={styles.comingSoonContainer}>
+        <View style={styles.comingSoonContent}>
+          <Image
+            source={{ uri: content.image }}
+            style={styles.comingSoonImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.comingSoonTitle}>{content.title}</Text>
+          <Text style={styles.comingSoonSubtext}>{content.subtext}</Text>
+          <TouchableOpacity style={styles.notifyButton}>
+            <Ionicons name="notifications-outline" size={20} color={Theme.colors.white} />
+            <Text style={styles.notifyButtonText}>Notify Me When Ready</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[0]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -578,30 +656,48 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Top Categories */}
-        <View style={styles.topCategoriesSection}>
-          <Text style={styles.sectionTitle}>Top Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryCard,
-                  selectedCategory === category.apiType && styles.categoryCardActive,
-                ]}
-                onPress={() => handleCategoryPress(category.apiType)}
-              >
-                <View style={[
-                  styles.categoryIconContainer,
-                  { backgroundColor: category.color },
-                  selectedCategory === category.apiType && styles.categoryIconContainerActive,
-                ]}>
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Sticky Header Container */}
+        <View style={styles.stickyHeaderContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() => router.push('/(tabs)/profile')}
+            >
+              <Ionicons name="person" size={24} color={Theme.colors.deepBlue} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Top Categories */}
+          <View style={styles.topCategoriesSection}>
+            <Text style={styles.sectionTitle}>Top Categories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryCard,
+                    selectedCategory === category.apiType && styles.categoryCardActive,
+                  ]}
+                  onPress={() => handleCategoryPress(category.apiType)}
+                >
+                  <View style={[
+                    styles.categoryIconContainer,
+                    { backgroundColor: category.color === '#FFFFFF' ? Theme.colors.backgroundLight : category.color },
+                    selectedCategory === category.apiType && styles.categoryIconContainerActive,
+                  ]}>
+                    <Text style={styles.categoryIcon}>{category.icon}</Text>
+                  </View>
+                  <Text style={styles.categoryName}>{category.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -628,59 +724,75 @@ export default function HomeScreen() {
         {/* Hospitals (Medicine) */}
         {renderHospitals()}
 
+        {/* Coming Soon Section */}
+        {renderComingSoon()}
+
         <View style={{ height: 30 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.backgroundLight,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingTop: 0,
     paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    backgroundColor: Theme.colors.backgroundLight,
+    borderBottomWidth: 0,
   },
-  logo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0066FF',
+  stickyHeaderContainer: {
+    backgroundColor: Theme.colors.backgroundLight,
+    zIndex: 10,
   },
   logoImage: {
-    width: 250,
-    height: 100,
+    width: 120,
+    height: 60,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Theme.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Theme.shadows.small,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    margin: 20,
+    backgroundColor: Theme.colors.white,
+    margin: Theme.spacing.lg,
     marginTop: 10,
-    padding: 15,
-    borderRadius: 8,
-    gap: 10,
+    padding: 14,
+    borderRadius: Theme.borderRadius.lg,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    ...Theme.shadows.small,
   },
   searchPlaceholder: {
-    color: '#666',
-    fontSize: 16,
+    color: Theme.colors.textGray,
+    fontSize: 15,
+    fontWeight: '500',
   },
   content: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 15,
+    fontSize: 20,
+    fontWeight: '800',
+    color: Theme.colors.deepBlue,
+    marginBottom: Theme.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -696,107 +808,140 @@ const styles = StyleSheet.create({
   },
   topCategoriesSection: {
     paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingVertical: 10,
+    backgroundColor: Theme.colors.backgroundLight,
   },
   categoriesScroll: {
-    marginTop: 10,
+    marginTop: 0,
   },
   categoryCard: {
     alignItems: 'center',
-    marginRight: 20,
-    width: 80,
+    marginRight: 16,
+    width: 70,
   },
   categoryCardActive: {
-    // Active state styling
+    // Active state styling handled in icon container
   },
   categoryIconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
+    width: 65,
+    height: 65,
+    borderRadius: Theme.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    backgroundColor: Theme.colors.white,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    ...Theme.shadows.small,
   },
   categoryIconContainerActive: {
-    borderWidth: 3,
-    borderColor: '#0066FF',
+    backgroundColor: Theme.colors.deepBlue,
+    borderColor: Theme.colors.deepBlue,
+    ...Theme.shadows.medium,
   },
   categoryIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   categoryName: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: Theme.colors.deepBlue,
     textAlign: 'center',
+    marginTop: 2,
   },
   specialOffersSection: {
-    paddingHorizontal: 20,
     marginBottom: 30,
   },
   offersCarousel: {
-    height: 200,
+    height: 180,
   },
   offerCard: {
-    width: screenWidth - 40,
-    height: 200,
-    borderRadius: 15,
+    width: screenWidth - 60,
+    height: 180,
+    borderRadius: Theme.borderRadius.xl,
     overflow: 'hidden',
-    marginRight: 20,
+    marginRight: 15,
     position: 'relative',
+    ...Theme.shadows.medium,
   },
-  offerBadge: {
+  offerBadgeContainer: {
     position: 'absolute',
     top: 15,
-    right: 15,
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    left: 15,
+    zIndex: 2,
+  },
+  offerBadge: {
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Theme.borderRadius.sm,
   },
   offerBadgeText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: Theme.colors.white,
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   offerImage: {
     width: '100%',
     height: '100%',
+    opacity: 0.8,
+  },
+  offerGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '100%',
+    zIndex: 1,
   },
   offerOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 15,
+    padding: 20,
+    zIndex: 2,
   },
   offerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 5,
+    fontSize: 22,
+    fontWeight: '900',
+    color: Theme.colors.white,
+    marginBottom: 4,
   },
   offerDescription: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    fontSize: 13,
+    color: '#E0E7FF',
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  claimButton: {
+    backgroundColor: Theme.colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: Theme.borderRadius.md,
+    alignSelf: 'flex-start',
+  },
+  claimButtonText: {
+    color: Theme.colors.deepBlue,
+    fontWeight: '800',
+    fontSize: 12,
   },
   offerIndicators: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 15,
-    gap: 8,
+    gap: 6,
   },
   offerIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E0E0E0',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Theme.colors.border,
   },
   offerIndicatorActive: {
-    backgroundColor: '#0066FF',
-    width: 24,
+    width: 20,
+    backgroundColor: Theme.colors.primary,
   },
   placeholderImage: {
     backgroundColor: '#F5F5F5',
@@ -845,32 +990,32 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   trendingBrandsSection: {
-    paddingHorizontal: 20,
     marginBottom: 30,
   },
   brandsScroll: {
+    paddingLeft: 20,
     marginTop: 10,
   },
   brandCard: {
-    width: 100,
-    marginRight: 15,
+    width: 85,
+    marginRight: 20,
     alignItems: 'center',
   },
   brandLogo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: Theme.borderRadius.xl,
     marginBottom: 8,
   },
   brandPlaceholder: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#0066FF',
+    color: Theme.colors.deepBlue,
   },
   brandName: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: Theme.colors.textDark,
     textAlign: 'center',
   },
   allOffersSection: {
@@ -879,35 +1024,36 @@ const styles = StyleSheet.create({
   },
   allOfferCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 15,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: Theme.colors.white,
+    borderRadius: Theme.borderRadius.xl,
+    padding: 12,
+    marginBottom: 16,
+    ...Theme.shadows.small,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   allOfferImage: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
+    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: Theme.colors.backgroundLight,
   },
   allOfferContent: {
     flex: 1,
-    padding: 15,
-    justifyContent: 'space-between',
+    marginLeft: 15,
+    justifyContent: 'center',
   },
   allOfferName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '800',
+    color: Theme.colors.deepBlue,
     marginBottom: 4,
   },
   allOfferSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: Theme.colors.textGray,
     marginBottom: 8,
+    fontWeight: '500',
   },
   allOfferTags: {
     flexDirection: 'row',
@@ -915,59 +1061,63 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   newTag: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   newTagText: {
-    color: '#FFFFFF',
+    color: '#D97706',
     fontSize: 10,
     fontWeight: 'bold',
   },
   locationsTag: {
-    backgroundColor: '#0066FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   locationsTagText: {
-    color: '#FFFFFF',
+    color: '#4338CA',
     fontSize: 10,
     fontWeight: 'bold',
   },
   allOfferCategory: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
   },
   allOfferCategoryText: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    fontSize: 11,
+    fontWeight: '700',
+    color: Theme.colors.primary,
   },
   pagination: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
-    paddingHorizontal: 20,
+    marginTop: 10,
+    gap: 15,
   },
   paginationButton: {
-    backgroundColor: '#0066FF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: Theme.colors.white,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: Theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    ...Theme.shadows.small,
   },
   paginationButtonDisabled: {
-    backgroundColor: '#CCCCCC',
     opacity: 0.5,
   },
   paginationButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: Theme.colors.deepBlue,
+    fontSize: 12,
+    fontWeight: '700',
   },
   paginationText: {
     fontSize: 14,
-    color: '#666',
+    color: Theme.colors.textGray,
+    fontWeight: '600',
   },
   hospitalsSection: {
     paddingHorizontal: 20,
@@ -1033,5 +1183,55 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#666',
+  },
+  comingSoonContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comingSoonContent: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comingSoonImage: {
+    width: screenWidth * 0.8,
+    height: screenWidth * 0.8,
+    marginBottom: 30,
+    borderRadius: Theme.borderRadius.xl,
+  },
+  comingSoonTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: Theme.colors.deepBlue,
+    textAlign: 'center',
+    lineHeight: 40,
+    marginBottom: 16,
+  },
+  comingSoonSubtext: {
+    fontSize: 16,
+    color: Theme.colors.textGray,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 10,
+  },
+  notifyButton: {
+    flexDirection: 'row',
+    width: '100%',
+    height: 56,
+    backgroundColor: Theme.colors.deepBlue,
+    borderRadius: Theme.borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    ...Theme.shadows.medium,
+  },
+  notifyButtonText: {
+    color: Theme.colors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 })

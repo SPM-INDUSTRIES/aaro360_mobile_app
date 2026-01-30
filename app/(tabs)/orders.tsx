@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useSelector } from 'react-redux'
+import { RootState } from '../../src/store/store'
 import { orderApi } from '../../src/lib/api'
 
 const CUSTOMER_ID_STORAGE_KEY = '@aaro360/customerId'
@@ -21,10 +22,10 @@ interface Order {
 export default function OrdersScreen() {
   const router = useRouter()
 
+  const { user } = useSelector((state: RootState) => state.auth)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [customerId, setCustomerId] = useState<number | null>(null)
 
   useEffect(() => {
     loadOrders()
@@ -40,29 +41,17 @@ export default function OrdersScreen() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const storedCustomerId = await AsyncStorage.getItem(CUSTOMER_ID_STORAGE_KEY)
-      console.log('Stored customerId:', storedCustomerId)
-      
-      if (!storedCustomerId) {
-        console.log('No customerId found in storage')
-        setCustomerId(null)
+
+      if (!user?.id) {
+        console.log('No user id found in auth state')
         setOrders([])
         return
       }
 
-      const id = Number(storedCustomerId)
-      if (!Number.isFinite(id) || id <= 0) {
-        console.log('Invalid customerId:', storedCustomerId)
-        setCustomerId(null)
-        setOrders([])
-        return
-      }
-
-      setCustomerId(id)
-      console.log('Fetching orders for customerId:', id)
-      const res = await orderApi.getByCustomer(id)
+      console.log('Fetching orders for userId:', user.id)
+      const res = await orderApi.getByCustomer(user.id)
       console.log('Orders API response:', res)
-      
+
       // Handle different response structures
       let ordersData: Order[] = []
       if (Array.isArray(res.data)) {
@@ -72,7 +61,7 @@ export default function OrdersScreen() {
       } else if (Array.isArray(res)) {
         ordersData = res
       }
-      
+
       console.log('Parsed orders:', ordersData.length)
       setOrders(ordersData)
     } catch (error: any) {
@@ -95,7 +84,7 @@ export default function OrdersScreen() {
         <Text style={styles.title}>My Orders</Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl
@@ -120,13 +109,13 @@ export default function OrdersScreen() {
             <Ionicons name="receipt-outline" size={64} color="#CCC" />
             <Text style={styles.emptyText}>No orders yet</Text>
             <Text style={styles.emptySubtext}>
-              {customerId 
-                ? `No orders found for customer ID: ${customerId}` 
+              {user?.id
+                ? `No orders found for user ID: ${user.id}`
                 : 'Place an order to see it here'}
             </Text>
-            {customerId && (
+            {user?.id && (
               <Text style={styles.debugText}>
-                Customer ID: {customerId}
+                User ID: {user.id}
               </Text>
             )}
             <TouchableOpacity
