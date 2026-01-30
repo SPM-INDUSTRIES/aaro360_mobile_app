@@ -288,22 +288,25 @@ export default function RestaurantDetailScreen() {
                 </View>
               </View>
 
-              <View style={styles.priceFilters}>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Min"
-                  value={minPrice}
-                  onChangeText={setMinPrice}
-                  keyboardType="numeric"
-                />
-                <Text style={styles.priceSeparator}>-</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Max"
-                  value={maxPrice}
-                  onChangeText={setMaxPrice}
-                  keyboardType="numeric"
-                />
+              <View style={styles.filterItem}>
+                <Text style={styles.filterLabel}>Price Range</Text>
+                <View style={styles.priceFilters}>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="Min"
+                    value={minPrice}
+                    onChangeText={setMinPrice}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.priceSeparator}>-</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChangeText={setMaxPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
               </View>
             </View>
           </View>
