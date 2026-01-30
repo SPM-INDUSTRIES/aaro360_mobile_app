@@ -1,10 +1,10 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { store, RootState, useAppDispatch } from '../src/store/store'
 import { clearCartAsync } from '../src/store/slices/cartSlice'
 import { orderApi, userApi } from '../src/lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -20,22 +20,26 @@ export default function CheckoutScreen() {
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch user profile to get saved address
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user?.id) {
-        try {
-          const response = await userApi.getProfile(user.id)
-          if (response.data?.address) {
-            setDeliveryAddress(response.data.address)
+  // Fetch user profile to get saved address whenever the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserProfile = async () => {
+        if (user?.id) {
+          try {
+            console.log('Fetching profile for user:', user.id)
+            const response = await userApi.getProfile(user.id)
+            if (response.data?.address) {
+              console.log('Found saved address:', response.data.address)
+              setDeliveryAddress(response.data.address)
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile:', error)
           }
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error)
         }
       }
-    }
-    fetchUserProfile()
-  }, [user?.id])
+      fetchUserProfile()
+    }, [user?.id])
+  )
 
   const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
