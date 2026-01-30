@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Theme } from '../../src/styles/theme'
 import { Skeleton } from '../../src/components/SkeletonLoader'
+import { useAppSelector } from '../../src/store/store'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -44,6 +45,7 @@ interface FoodCategory {
 
 export default function HomeScreen() {
   const router = useRouter()
+  const { user } = useAppSelector((state) => state.auth)
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(ProductCategory.FOOD)
   const [trendingBrands, setTrendingBrands] = useState<Vendor[]>([])
   const [allOffers, setAllOffers] = useState<Product[]>([])
@@ -667,9 +669,17 @@ export default function HomeScreen() {
             />
             <TouchableOpacity
               style={styles.profileButton}
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => router.push('/profile')}
             >
-              <Ionicons name="person" size={24} color={Theme.colors.deepBlue} />
+              {user?.profilePicture ? (
+                <Image source={{ uri: user.profilePicture }} style={styles.headerAvatar} />
+              ) : (
+                <View style={styles.headerAvatarPlaceholder}>
+                  <Text style={styles.headerAvatarText}>
+                    {user?.firstName?.[0]?.toUpperCase() || <Ionicons name="person" size={20} color={Theme.colors.deepBlue} />}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -1233,5 +1243,32 @@ const styles = StyleSheet.create({
     color: Theme.colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  headerAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  headerAvatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Theme.colors.deepBlue,
   },
 })

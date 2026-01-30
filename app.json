@@ -4,7 +4,7 @@
     "slug": "aaro360-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/app-logo.png",
+    "icon": "./assets/appicon/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/logo.png",
@@ -23,8 +23,8 @@
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFD700"
+        "foregroundImage": "./assets/appicon/icon.png",
+        "backgroundColor": "#F59F0A"
       },
       "package": "com.aaro360.app",
       "config": {
