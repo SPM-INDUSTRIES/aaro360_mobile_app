@@ -27,6 +27,11 @@
         "backgroundColor": "#FFD700"
       },
       "package": "com.aaro360.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC7AiyMkoTq5KCtQWBrvGeYAdboqRzGwyQ"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

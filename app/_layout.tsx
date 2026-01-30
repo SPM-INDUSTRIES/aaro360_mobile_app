@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import { store, useAppDispatch, useAppSelector } from '../src/store/store'
 import { initializeAuth } from '../src/store/slices/authSlice'
 import { initializeInterceptors } from '../src/lib/api'
+import { fetchCart } from '../src/store/slices/cartSlice'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -27,15 +28,33 @@ function AppContent() {
     const segment = segments[0]
     const isAuthScreen = segment === 'login' || segment === 'register' || segment === 'auth'
 
-    // Redirect authenticated users away from auth screens
-    if (isAuthenticated && isAuthScreen) {
-      router.replace('/(tabs)/')
+    if (__DEV__) {
+      console.log('Navigation Guard:', {
+        segment,
+        isAuthenticated,
+        isReady,
+        path: segments.join('/')
+      })
     }
+
     // Redirect unauthenticated users to login (except on auth screens)
-    else if (!isAuthenticated && segment && !isAuthScreen) {
+    if (!isAuthenticated && !isAuthScreen) {
+      console.log('User unauthenticated, redirecting to login...')
       router.replace('/login')
     }
-  }, [isReady, isAuthenticated])
+    // Redirect authenticated users away from auth screens
+    else if (isAuthenticated && isAuthScreen) {
+      console.log('User authenticated, redirecting to home...')
+      router.replace('/(tabs)/')
+    }
+  }, [isReady, isAuthenticated, segments, navigationState?.key])
+
+  // Fetch cart when authenticated
+  useEffect(() => {
+    if (isAuthenticated && isReady) {
+      dispatch(fetchCart())
+    }
+  }, [isAuthenticated, isReady, dispatch])
 
   if (!isReady) {
     return (

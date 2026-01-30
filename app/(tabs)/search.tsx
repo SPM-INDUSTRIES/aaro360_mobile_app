@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react'
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, SafeAreaView, Platform, StatusBar, Alert } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useDispatch } from 'react-redux'
+import { useAppDispatch } from '../../src/store/store'
 import FilterModal from '../../src/components/search/FilterModal'
 import { productApi } from '../../src/lib/productApi'
 import { Product, ProductCategory } from '../../src/types/product'
-import { addItem } from '../../src/store/slices/cartSlice'
+import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
+import { API_URL } from '../../src/lib/api'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || '${process.env.EXPO_PUBLIC_API_URL}'
 
 export default function SearchScreen() {
   const router = useRouter()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
   const { category: initialCategory, isFeatured } = useLocalSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
   const [products, setProducts] = useState<Product[]>([])
@@ -58,13 +58,17 @@ export default function SearchScreen() {
     }
 
     // Add item to cart - floating cart button will show the count
-    dispatch(addItem({
+    dispatch(addItemToCart({
       itemName: product.name,
       itemType: itemType,
       quantity: 1,
       unitPrice: Number(product.price || 0),
       restaurantId: restaurantId,
     }))
+      .unwrap()
+      .catch((error) => {
+        Alert.alert('Error', error || 'Failed to add item to cart')
+      })
   }
 
   useEffect(() => {

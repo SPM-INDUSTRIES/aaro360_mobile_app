@@ -1,16 +1,25 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState } from '../../src/store/store'
-import { removeItem, updateQuantity, clearCart } from '../../src/store/slices/cartSlice'
+import { useAppDispatch, useAppSelector } from '../../src/store/store'
+import {
+  removeCartItem,
+  updateCartItemQuantity,
+  clearCartAsync,
+  fetchCart
+} from '../../src/store/slices/cartSlice'
 import { Ionicons } from '@expo/vector-icons'
 
 export default function CartScreen() {
   const router = useRouter()
-  const dispatch = useDispatch()
-  const { items, total, deliveryFee, discount } = useSelector(
-    (state: RootState) => state.cart
+  const dispatch = useAppDispatch()
+  const { items, total, deliveryFee, discount, loading } = useAppSelector(
+    (state) => state.cart
   )
+
+  useEffect(() => {
+    dispatch(fetchCart())
+  }, [dispatch])
 
   const handleCheckout = () => {
     if (items.length > 0) {
@@ -23,7 +32,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Cart</Text>
         {items.length > 0 && (
-          <TouchableOpacity onPress={() => dispatch(clearCart())}>
+          <TouchableOpacity onPress={() => dispatch(clearCartAsync())}>
             <Text style={styles.clearText}>Clear</Text>
           </TouchableOpacity>
         )}
@@ -35,7 +44,7 @@ export default function CartScreen() {
             <Ionicons name="cart-outline" size={80} color="#CCC" />
             <Text style={styles.emptyText}>Your cart is empty</Text>
             <Text style={styles.emptySubtext}>Add items to get started</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.shopButton}
               onPress={() => router.push('/(tabs)/index')}
             >
@@ -55,10 +64,12 @@ export default function CartScreen() {
                   <TouchableOpacity
                     style={styles.quantityButton}
                     onPress={() => {
-                      if (item.quantity > 1) {
-                        dispatch(updateQuantity({ itemName: item.itemName, quantity: item.quantity - 1 }))
-                      } else {
-                        dispatch(removeItem(item.itemName))
+                      if (item.id) {
+                        if (item.quantity > 1) {
+                          dispatch(updateCartItemQuantity({ id: item.id, quantity: item.quantity - 1 }))
+                        } else {
+                          dispatch(removeCartItem(item.id))
+                        }
                       }
                     }}
                   >
@@ -68,7 +79,9 @@ export default function CartScreen() {
                   <TouchableOpacity
                     style={styles.quantityButton}
                     onPress={() => {
-                      dispatch(updateQuantity({ itemName: item.itemName, quantity: item.quantity + 1 }))
+                      if (item.id) {
+                        dispatch(updateCartItemQuantity({ id: item.id, quantity: item.quantity + 1 }))
+                      }
                     }}
                   >
                     <Ionicons name="add" size={20} color="#1E3A8A" />
@@ -80,7 +93,7 @@ export default function CartScreen() {
                   </Text>
                   <TouchableOpacity
                     style={styles.removeButton}
-                    onPress={() => dispatch(removeItem(item.itemName))}
+                    onPress={() => item.id && dispatch(removeCartItem(item.id))}
                   >
                     <Ionicons name="trash-outline" size={20} color="#E53E3E" />
                   </TouchableOpacity>

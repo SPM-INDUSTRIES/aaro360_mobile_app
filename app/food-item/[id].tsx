@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useDispatch } from 'react-redux'
-import { addItem } from '../../src/store/slices/cartSlice'
+import { useAppDispatch } from '../../src/store/store'
+import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
+import { API_URL } from '../../src/lib/api'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'
 
 interface FoodCategory {
   id: number
@@ -56,7 +56,7 @@ interface FoodItem {
 export default function FoodItemDetailScreen() {
   const params = useLocalSearchParams()
   const router = useRouter()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
   const itemId = params.id as string
 
   const [foodItem, setFoodItem] = useState<FoodItem | null>(null)
@@ -159,13 +159,17 @@ export default function FoodItemDetailScreen() {
     const restaurantId = foodItem.restaurant?.id ? parseInt(foodItem.restaurant.id) : undefined
 
     // Add item to cart with quantity - floating cart button will show count
-    dispatch(addItem({
+    dispatch(addItemToCart({
       itemName: itemName,
       itemType: itemType,
       quantity: quantity,
-      unitPrice: unitPrice,
+      unitPrice: Number(unitPrice),
       restaurantId: restaurantId,
     }))
+      .unwrap()
+      .catch((error) => {
+        Alert.alert('Error', error || 'Failed to add item to cart')
+      })
   }
 
   const renderSkeleton = () => {

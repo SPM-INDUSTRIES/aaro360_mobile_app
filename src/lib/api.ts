@@ -3,12 +3,21 @@ import axios from 'axios'
 // Use local network IP for mobile devices, localhost for web
 // Update this IP to match your computer's local IP address
 // For production, set EXPO_PUBLIC_API_URL environment variable to your production API URL
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.3:3001'
 
 // Log API URL in development for debugging (remove sensitive info in production)
 if (__DEV__) {
   console.log('API Base URL:', API_URL)
 }
+
+// Base axios instance for simple requests without interceptors (like auth)
+const baseApi = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
 
 const api = axios.create({
   baseURL: API_URL,
@@ -31,19 +40,19 @@ export const initializeInterceptors = async () => {
   }
 }
 
-// Auth endpoints
+// Auth endpoints - use baseApi to avoid interceptor side effects during login/refresh
 export const authApi = {
-  googleLogin: (data: { idToken: string }) => api.post('/auth/google-login', data),
-  emailLogin: (data: { email: string; password: string }) => api.post('/auth/email-login', data),
-  phoneLogin: (data: { idToken: string }) => api.post('/auth/phone-login', data),
-  register: (data: { firstName: string; lastName: string; email: string; password: string; otp: string }) => 
-    api.post('/auth/register', data),
+  googleLogin: (data: { idToken: string }) => baseApi.post('/auth/google-login', data),
+  emailLogin: (data: { email: string; password: string }) => baseApi.post('/auth/email-login', data),
+  phoneLogin: (data: { idToken: string }) => baseApi.post('/auth/phone-login', data),
+  register: (data: { firstName: string; lastName: string; email: string; password: string; otp: string }) =>
+    baseApi.post('/auth/register', data),
   phoneRegister: (data: { firstName: string; lastName: string; phoneNumber: string; idToken: string }) =>
-    api.post('/auth/phone-register', data),
-  sendOtp: (data: { email: string }) => api.post('/auth/send-otp', data),
-  verifyOtp: (data: { email: string; otp: string }) => api.post('/auth/verify-otp', data),
-  refreshToken: (data: { refreshToken: string }) => api.post('/auth/refresh', data),
-  logout: () => api.post('/auth/logout'),
+    baseApi.post('/auth/phone-register', data),
+  sendOtp: (data: { email: string }) => baseApi.post('/auth/send-otp', data),
+  verifyOtp: (data: { email: string; otp: string }) => baseApi.post('/auth/verify-otp', data),
+  refreshToken: (data: { refreshToken: string }) => baseApi.post('/auth/refresh', data),
+  logout: () => api.post('/auth/logout'), // Logout still uses interceptors for the access token
 }
 
 // User endpoints
@@ -57,7 +66,7 @@ export const orderApi = {
   create: (data: any) => api.post('/orders', data),
   getById: (id: number) => api.get(`/orders/${id}`),
   getByCustomer: (customerId: number) => api.get(`/orders/customer/${customerId}`),
-  updateStatus: (id: number, status: string) => 
+  updateStatus: (id: number, status: string) =>
     api.patch(`/orders/${id}/status`, { status }),
 }
 

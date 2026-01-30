@@ -213,19 +213,25 @@ export const refreshAccessToken = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY)
+
       if (!refreshToken) {
-        throw new Error('No refresh token found')
+        console.error('Refresh token error: No refresh token found in SecureStore')
+        return rejectWithValue('Session expired. Please login again.')
       }
 
+      console.log('Attempting to refresh access token...')
       const response = await authApi.refreshToken({ refreshToken })
       const { accessToken, refreshToken: newRefreshToken, user } = response.data
 
+      console.log('Token refresh successful')
       // Update refresh token
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
+      if (newRefreshToken) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
+      }
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Refresh token error:', error)
+      console.error('Refresh token API call failed:', error.response?.data || error.message)
       // If refresh fails, clear stored token
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
       return rejectWithValue(getErrorMessage(error))

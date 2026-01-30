@@ -1,10 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState } from '../src/store/store'
-import { clearCart } from '../src/store/slices/cartSlice'
-import { orderApi } from '../src/lib/api'
-import { useState } from 'react'
+import { useSelector } from 'react-redux'
+import { store, RootState, useAppDispatch } from '../src/store/store'
+import { clearCartAsync } from '../src/store/slices/cartSlice'
+import { orderApi, userApi } from '../src/lib/api'
+import { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -12,28 +12,49 @@ const CUSTOMER_ID_STORAGE_KEY = '@aaro360/customerId'
 
 export default function CheckoutScreen() {
   const router = useRouter()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
+  const { user } = useSelector((state: RootState) => state.auth)
   const { items, total, deliveryFee } = useSelector((state: RootState) => state.cart)
-  
+
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Fetch user profile to get saved address
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const response = await userApi.getProfile(user.id)
+          if (response.data?.address) {
+            setDeliveryAddress(response.data.address)
+          }
+        } catch (error) {
+          console.error('Failed to fetch user profile:', error)
+        }
+      }
+    }
+    fetchUserProfile()
+  }, [user?.id])
+
   const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
-      alert('Please enter delivery address')
+      Alert.alert('Error', 'Please enter delivery address')
       return
     }
 
     setIsSubmitting(true)
     try {
-      // Use persisted customerId (created/returned by backend). Fallback to 1 for first-time orders.
-      const storedCustomerId = await AsyncStorage.getItem(CUSTOMER_ID_STORAGE_KEY)
-      const customerId = storedCustomerId ? Number(storedCustomerId) : 1
-      
+      if (!user?.id) {
+        Alert.alert('Error', 'You must be logged in to place an order')
+        return
+      }
+
+      const customerId = user.id
+
       // Ensure all items have valid data
       if (items.length === 0) {
-        alert('Your cart is empty')
+        Alert.alert('Error', 'Your cart is empty')
         return
       }
 
@@ -59,33 +80,21 @@ export default function CheckoutScreen() {
       }
 
       const response = await orderApi.create(orderData)
-      dispatch(clearCart())
-      
+      dispatch(clearCartAsync())
+
       // Backend returns order object directly in response.data
       const order = response.data
       console.log('Order creation response:', JSON.stringify(order, null, 2))
-      
+
       if (!order || !order.id) {
         throw new Error('Invalid order response')
       }
 
-      // Persist real customerId for future "My Orders" list
-      // Check both order.customerId and order.customer?.id
-      const customerIdToSave = order.customerId || order.customer?.id || customerId
-      if (customerIdToSave) {
-        console.log('Saving customerId to storage:', customerIdToSave)
-        await AsyncStorage.setItem(CUSTOMER_ID_STORAGE_KEY, String(customerIdToSave))
-      } else {
-        console.warn('Order response missing customerId. Order:', order)
-        // Fallback: save the customerId we used to create the order
-        await AsyncStorage.setItem(CUSTOMER_ID_STORAGE_KEY, String(customerId))
-      }
-      
-      router.push(`/order-tracking?id=${order.id}`)
+      router.push(`/order-tracking?id=${order.id}&fromCheckout=true`)
     } catch (error: any) {
       console.error('Order creation error:', error)
       console.error('Error response:', error.response?.data)
-      
+
       // Extract validation errors if present
       let errorMessage = 'Failed to place order'
       if (error.response?.status === 400) {
@@ -100,12 +109,12 @@ export default function CheckoutScreen() {
           errorMessage = 'Invalid request data. Please check all fields.'
         }
       } else {
-        errorMessage = error.response?.data?.message || 
-                      error.response?.data?.error || 
-                      error.message || 
-                      'Unknown error'
+        errorMessage = error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Unknown error'
       }
-      alert(errorMessage)
+      Alert.alert('Order Error', errorMessage)
     } finally {
       setIsSubmitting(false)
     }

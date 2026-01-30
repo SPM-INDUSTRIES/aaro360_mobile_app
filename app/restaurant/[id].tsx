@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, Alert } from 'react-native'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useDispatch } from 'react-redux'
+import { useAppDispatch } from '../../src/store/store'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
 import AddToCartModal from '../../src/components/AddToCartModal'
-import { addItem } from '../../src/store/slices/cartSlice'
+import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
+import { API_URL } from '../../src/lib/api'
 
 interface FoodCategory {
   id: number
@@ -53,7 +54,7 @@ interface Restaurant {
 export default function RestaurantDetailScreen() {
   const params = useLocalSearchParams()
   const router = useRouter()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
   const restaurantId = params.id as string
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
@@ -75,9 +76,9 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true)
       const [restaurantRes, foodItemsRes, categoriesRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors/${restaurantId}`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items/restaurant/${restaurantId}`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=food`),
+        fetch(`${API_URL}/vendors/${restaurantId}`),
+        fetch(`${API_URL}/food-items/restaurant/${restaurantId}`),
+        fetch(`${API_URL}/food-categories?type=food`),
       ])
 
       const restaurantData = await restaurantRes.json()
@@ -130,13 +131,17 @@ export default function RestaurantDetailScreen() {
       ? CategoryType.GROCERY
       : CategoryType.FOOD
 
-    dispatch(addItem({
+    dispatch(addItemToCart({
       itemName,
       itemType,
       quantity,
-      unitPrice,
+      unitPrice: Number(unitPrice),
       restaurantId: parseInt(restaurantId),
     }))
+      .unwrap()
+      .catch((error) => {
+        Alert.alert('Error', error || 'Failed to add item to cart')
+      })
   }
 
   const filteredItems = foodItems.filter((item) => {
