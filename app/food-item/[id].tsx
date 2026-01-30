@@ -7,6 +7,7 @@ import { addItem } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'
 
@@ -157,7 +158,7 @@ export default function FoodItemDetailScreen() {
     // Get restaurant ID
     const restaurantId = foodItem.restaurant?.id ? parseInt(foodItem.restaurant.id) : undefined
 
-    // Add item to cart with quantity
+    // Add item to cart with quantity - floating cart button will show count
     dispatch(addItem({
       itemName: itemName,
       itemType: itemType,
@@ -166,7 +167,6 @@ export default function FoodItemDetailScreen() {
       restaurantId: restaurantId,
     }))
   }
-
 
   const renderSkeleton = () => {
     return (
@@ -409,6 +409,7 @@ export default function FoodItemDetailScreen() {
           )}
         </>
       )}
+      <FloatingCartButton />
     </>
   )
 }

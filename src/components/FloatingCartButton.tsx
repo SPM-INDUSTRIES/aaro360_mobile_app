@@ -1,14 +1,14 @@
-import { useRef } from 'react'
+import React, { useRef, useMemo } from 'react'
 import {
     View,
     Text,
-    StyleSheet,
     TouchableOpacity,
+    StyleSheet,
     Animated,
     PanResponder,
     Dimensions,
 } from 'react-native'
-import { useRouter, useSegments } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store/store'
 import { Theme } from '../styles/theme'
@@ -19,20 +19,19 @@ const MARGIN = 20
 
 export default function FloatingCartButton() {
     const router = useRouter()
-    const segments = useSegments()
-    const { items } = useAppSelector((state) => state.cart)
-    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+    const cartItems = useAppSelector((state) => state.cart.items)
+    const totalCount = useMemo(() =>
+        cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        [cartItems]
+    )
 
-    // Check if we're on the cart screen
-    const isOnCartScreen = segments.includes('cart' as never)
-
-    // Position for dragging
+    // Position state for dragging - use useRef to avoid re-renders
     const pan = useRef(new Animated.ValueXY({
         x: SCREEN_WIDTH - BUTTON_SIZE - MARGIN,
-        y: SCREEN_HEIGHT - 200,
+        y: SCREEN_HEIGHT - BUTTON_SIZE - 200,
     })).current
 
-    const panResponder = useRef(
+    const panResponder = useMemo(() =>
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
@@ -47,35 +46,30 @@ export default function FloatingCartButton() {
                 [null, { dx: pan.x, dy: pan.y }],
                 { useNativeDriver: false }
             ),
-            onPanResponderRelease: (_, gestureState) => {
+            onPanResponderRelease: () => {
                 pan.flattenOffset()
-
-                // Snap to edge
                 const currentX = (pan.x as any)._value
                 const currentY = (pan.y as any)._value
 
-                // Determine which side to snap to
-                const snapToRight = currentX > SCREEN_WIDTH / 2 - BUTTON_SIZE / 2
+                const snapToLeft = currentX < SCREEN_WIDTH / 2
+                const targetX = snapToLeft ? MARGIN : SCREEN_WIDTH - BUTTON_SIZE - MARGIN
 
-                // Constrain Y within screen bounds
-                let finalY = currentY
-                if (finalY < MARGIN + 50) finalY = MARGIN + 50
-                if (finalY > SCREEN_HEIGHT - BUTTON_SIZE - 150) finalY = SCREEN_HEIGHT - BUTTON_SIZE - 150
+                const minY = 100
+                const maxY = SCREEN_HEIGHT - BUTTON_SIZE - 200
+                const targetY = Math.max(minY, Math.min(maxY, currentY))
 
                 Animated.spring(pan, {
-                    toValue: {
-                        x: snapToRight ? SCREEN_WIDTH - BUTTON_SIZE - MARGIN : MARGIN,
-                        y: finalY,
-                    },
+                    toValue: { x: targetX, y: targetY },
                     useNativeDriver: false,
-                    friction: 7,
+                    friction: 5,
                 }).start()
             },
-        })
-    ).current
+        }),
+        [pan]
+    )
 
-    // Don't render if cart is empty or on cart screen
-    if (totalItems === 0 || isOnCartScreen) {
+    // Don't render if cart is empty
+    if (totalCount === 0) {
         return null
     }
 
@@ -96,11 +90,13 @@ export default function FloatingCartButton() {
             <TouchableOpacity
                 style={styles.button}
                 onPress={handlePress}
-                activeOpacity={0.9}
+                activeOpacity={0.8}
             >
                 <Ionicons name="cart" size={28} color="#FFF" />
                 <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{totalItems > 99 ? '99+' : totalItems}</Text>
+                    <Text style={styles.badgeText}>
+                        {totalCount > 99 ? '99+' : totalCount}
+                    </Text>
                 </View>
             </TouchableOpacity>
         </Animated.View>
@@ -110,7 +106,8 @@ export default function FloatingCartButton() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        zIndex: 1000,
+        zIndex: 9999,
+        elevation: 9999,
     },
     button: {
         width: BUTTON_SIZE,
@@ -129,7 +126,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -5,
         right: -5,
-        backgroundColor: Theme.colors.deepBlue,
+        backgroundColor: '#FF3B30',
         borderRadius: 12,
         minWidth: 24,
         height: 24,

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
 
 interface FoodCategory {
   id: number
@@ -295,6 +296,7 @@ export default function RestaurantDetailScreen() {
           </View>
         </ScrollView>
       )}
+      <FloatingCartButton />
     </>
   )
 }

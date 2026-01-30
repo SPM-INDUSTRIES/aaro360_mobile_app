@@ -8,6 +8,7 @@ import { productApi } from '../../src/lib/productApi'
 import { Product, ProductCategory } from '../../src/types/product'
 import { addItem } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '${process.env.EXPO_PUBLIC_API_URL}'
 
@@ -56,7 +57,7 @@ export default function SearchScreen() {
       }
     }
 
-    // Add item to cart
+    // Add item to cart - floating cart button will show the count
     dispatch(addItem({
       itemName: product.name,
       itemType: itemType,
@@ -65,7 +66,6 @@ export default function SearchScreen() {
       restaurantId: restaurantId,
     }))
   }
-
 
   useEffect(() => {
     // We always search/explore, but filters.category now overrides the initialCategory param
@@ -449,6 +449,7 @@ export default function SearchScreen() {
         filters={filters}
         onApplyFilters={setFilters}
       />
+      <FloatingCartButton />
     </View>
   )
 }
