@@ -84,7 +84,7 @@ export default function SpecialOffersScreen() {
                             }}
                         >
                             <LinearGradient
-                                colors={['#1E3A8A', '#2563EB']}
+                                colors={['#124569', '#2563EB']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFill}

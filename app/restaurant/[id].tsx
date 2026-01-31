@@ -65,6 +65,7 @@ export default function RestaurantDetailScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [priceError, setPriceError] = useState('')
   const [showAddToCartModal, setShowAddToCartModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null)
 
@@ -75,17 +76,24 @@ export default function RestaurantDetailScreen() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [restaurantRes, foodItemsRes, categoriesRes] = await Promise.all([
-        fetch(`${API_URL}/vendors/${restaurantId}`),
+
+      // First fetch restaurant to know its type
+      const restaurantRes = await fetch(`${API_URL}/vendors/${restaurantId}`)
+      const restaurantData = await restaurantRes.json()
+      setRestaurant(restaurantData)
+
+      // Determine category type based on vendor type
+      const categoryType = restaurantData.type === 'grocery_store' ? 'grocery' : 'food'
+
+      // Fetch food items and relevant categories
+      const [foodItemsRes, categoriesRes] = await Promise.all([
         fetch(`${API_URL}/food-items/restaurant/${restaurantId}`),
-        fetch(`${API_URL}/food-categories?type=food`),
+        fetch(`${API_URL}/food-categories?type=${categoryType}`),
       ])
 
-      const restaurantData = await restaurantRes.json()
       const foodItemsData = await foodItemsRes.json()
       const categoriesData = await categoriesRes.json()
 
-      setRestaurant(restaurantData)
       setFoodItems(foodItemsData)
       setCategories(categoriesData)
     } catch (error) {
@@ -147,10 +155,35 @@ export default function RestaurantDetailScreen() {
   const filteredItems = foodItems.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = !selectedCategory || item.category.id.toString() === selectedCategory
-    const matchesMinPrice = !minPrice || item.price >= parseFloat(minPrice)
-    const matchesMaxPrice = !maxPrice || item.price <= parseFloat(maxPrice)
+
+    const min = minPrice ? parseFloat(minPrice) : 0
+    const max = maxPrice ? parseFloat(maxPrice) : Infinity
+
+    // Basic numerical validation
+    if (minPrice && isNaN(min)) return false
+    if (maxPrice && isNaN(max)) return false
+
+    // Logic validation: only apply if min <= max to avoid confusion, or handle it in the filter
+    const matchesMinPrice = !minPrice || item.price >= min
+    const matchesMaxPrice = !maxPrice || item.price <= max
+
     return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && item.isAvailable
   })
+
+  // Add a side effect to check min/max logic and warn user
+  useEffect(() => {
+    if (minPrice && maxPrice) {
+      const min = parseFloat(minPrice)
+      const max = parseFloat(maxPrice)
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        setPriceError('Min should be less than Max')
+      } else {
+        setPriceError('')
+      }
+    } else {
+      setPriceError('')
+    }
+  }, [minPrice, maxPrice])
 
   const renderSkeleton = () => {
     return (
@@ -268,26 +301,45 @@ export default function RestaurantDetailScreen() {
               />
             </View>
 
-            <View style={styles.filterRow}>
-              <View style={styles.filterItem}>
-                <Text style={styles.filterLabel}>Category</Text>
-                <View style={styles.pickerContainer}>
+            <View style={styles.categoryFilterContainer}>
+              <Text style={styles.filterLabel}>Categories</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.categoriesScroll}
+                contentContainerStyle={styles.categoriesScrollContent}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.categoryTab,
+                    selectedCategory === '' && styles.categoryTabActive
+                  ]}
+                  onPress={() => setSelectedCategory('')}
+                >
+                  <Text style={[
+                    styles.categoryTabText,
+                    selectedCategory === '' && styles.categoryTabTextActive
+                  ]}>All</Text>
+                </TouchableOpacity>
+                {categories.map((cat) => (
                   <TouchableOpacity
-                    style={styles.picker}
-                    onPress={() => {
-                      // In a real app, show a modal with category options
-                    }}
+                    key={cat.id}
+                    style={[
+                      styles.categoryTab,
+                      selectedCategory === cat.id.toString() && styles.categoryTabActive
+                    ]}
+                    onPress={() => setSelectedCategory(cat.id.toString())}
                   >
-                    <Text style={styles.pickerText}>
-                      {selectedCategory
-                        ? categories.find(c => c.id.toString() === selectedCategory)?.name
-                        : 'All'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color="#666" />
+                    <Text style={[
+                      styles.categoryTabText,
+                      selectedCategory === cat.id.toString() && styles.categoryTabTextActive
+                    ]}>{cat.name}</Text>
                   </TouchableOpacity>
-                </View>
-              </View>
+                ))}
+              </ScrollView>
+            </View>
 
+            <View style={styles.filterRow}>
               <View style={styles.filterItem}>
                 <Text style={styles.filterLabel}>Price Range</Text>
                 <View style={styles.priceFilters}>
@@ -307,6 +359,7 @@ export default function RestaurantDetailScreen() {
                     keyboardType="numeric"
                   />
                 </View>
+                {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
               </View>
             </View>
           </View>
@@ -486,22 +539,37 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 5,
+    marginBottom: 8,
   },
-  pickerContainer: {
+  categoryFilterContainer: {
+    marginBottom: 15,
+  },
+  categoriesScroll: {
+    marginTop: 0,
+  },
+  categoriesScrollContent: {
+    paddingRight: 20,
+    gap: 10,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 8,
   },
-  picker: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
+  categoryTabActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
   },
-  pickerText: {
-    fontSize: 14,
-    color: '#000',
+  categoryTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  categoryTabTextActive: {
+    color: '#FFF',
   },
   priceFilters: {
     flexDirection: 'row',
@@ -565,7 +633,7 @@ const styles = StyleSheet.create({
   },
   foodCategory: {
     fontSize: 12,
-    color: '#0066FF',
+    color: '#124569',
     marginBottom: 4,
   },
   foodDescription: {
@@ -589,10 +657,10 @@ const styles = StyleSheet.create({
   foodPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0066FF',
+    color: '#124569',
   },
   addButton: {
-    backgroundColor: '#0066FF',
+    backgroundColor: '#124569',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -613,5 +681,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '600',
   },
 })

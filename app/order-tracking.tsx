@@ -41,7 +41,7 @@ export default function OrderTrackingScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#F59E0B" />
+        <ActivityIndicator size="large" color="#f27424" />
         <Text style={styles.loadingText}>Loading order details...</Text>
       </View>
     )
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   totalSummaryValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#f27424',
   },
   detailRow: {
     flexDirection: 'row',
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   homeButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

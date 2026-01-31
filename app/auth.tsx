@@ -24,7 +24,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#F59E0B" />
+      <ActivityIndicator size="large" color="#f27424" />
     </View>
   )
 }
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
     marginBottom: 12,
     textAlign: 'center',
   },

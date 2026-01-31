@@ -40,6 +40,7 @@ export default function FoodCategoryDetailScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [priceError, setPriceError] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -67,10 +68,34 @@ export default function FoodCategoryDetailScreen() {
 
   const filteredItems = foodItems.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesMinPrice = !minPrice || item.price >= parseFloat(minPrice)
-    const matchesMaxPrice = !maxPrice || item.price <= parseFloat(maxPrice)
+
+    const min = minPrice ? parseFloat(minPrice) : 0
+    const max = maxPrice ? parseFloat(maxPrice) : Infinity
+
+    // Basic numerical validation
+    if (minPrice && isNaN(min)) return false
+    if (maxPrice && isNaN(max)) return false
+
+    const matchesMinPrice = !minPrice || item.price >= min
+    const matchesMaxPrice = !maxPrice || item.price <= max
+
     return matchesSearch && matchesMinPrice && matchesMaxPrice && item.isAvailable
   })
+
+  // Add a side effect to check min/max logic and warn user
+  useEffect(() => {
+    if (minPrice && maxPrice) {
+      const min = parseFloat(minPrice)
+      const max = parseFloat(maxPrice)
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        setPriceError('Min should be less than Max')
+      } else {
+        setPriceError('')
+      }
+    } else {
+      setPriceError('')
+    }
+  }, [minPrice, maxPrice])
 
   const renderSkeleton = () => {
     return (
@@ -178,6 +203,7 @@ export default function FoodCategoryDetailScreen() {
                 keyboardType="numeric"
               />
             </View>
+            {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
           </View>
 
           {/* Food Items */}
@@ -351,7 +377,7 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: 12,
-    color: '#0066FF',
+    color: '#124569',
     marginBottom: 4,
   },
   foodDescription: {
@@ -367,10 +393,10 @@ const styles = StyleSheet.create({
   foodPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0066FF',
+    color: '#124569',
   },
   addButton: {
-    backgroundColor: '#0066FF',
+    backgroundColor: '#124569',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -391,5 +417,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '600',
+    textAlign: 'right',
   },
 })

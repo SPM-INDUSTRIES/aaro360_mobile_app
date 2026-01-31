@@ -360,7 +360,7 @@ export default function FoodItemDetailScreen() {
                             </Text>
                           </View>
                           {selectedAddons.includes(addon.id) && (
-                            <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                            <Ionicons name="checkmark-circle" size={24} color="#f27424" />
                           )}
                         </TouchableOpacity>
                       ))}
@@ -376,14 +376,14 @@ export default function FoodItemDetailScreen() {
                         onPress={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity === 1}
                       >
-                        <Ionicons name="remove" size={20} color={quantity === 1 ? "#CCC" : "#1E3A8A"} />
+                        <Ionicons name="remove" size={20} color={quantity === 1 ? "#CCC" : "#124569"} />
                       </TouchableOpacity>
                       <Text style={styles.quantityText}>{quantity}</Text>
                       <TouchableOpacity
                         style={styles.quantityButton}
                         onPress={() => setQuantity(quantity + 1)}
                       >
-                        <Ionicons name="add" size={20} color="#1E3A8A" />
+                        <Ionicons name="add" size={20} color="#124569" />
                       </TouchableOpacity>
                     </View>
                   </View>

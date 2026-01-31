@@ -59,7 +59,7 @@ function AppContent() {
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F59E0B" />
+        <ActivityIndicator size="large" color="#f27424" />
       </View>
     )
   }
@@ -70,8 +70,8 @@ function AppContent() {
         initialRouteName="login"
         screenOptions={{
           headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: '#1E3A8A',
-          headerTitleStyle: { fontWeight: 'bold', color: '#1E3A8A' },
+          headerTintColor: '#124569',
+          headerTitleStyle: { fontWeight: 'bold', color: '#124569' },
           headerShadowVisible: false,
         }}
       >

@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#124569',
     borderRadius: 12,
   },
   roleText: {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 20,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,

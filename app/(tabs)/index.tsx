@@ -295,7 +295,7 @@ export default function HomeScreen() {
 
   // Render Special Offers Carousel (from offers table)
   const renderSpecialOffersCarousel = () => {
-    if (selectedCategory === ProductCategory.VEHICLE) return null
+    if (selectedCategory === ProductCategory.VEHICLE || selectedCategory === ProductCategory.MEDICINE) return null
     const filteredOffers = getFilteredOffers()
     if (filteredOffers.length === 0) return null
 
@@ -330,7 +330,7 @@ export default function HomeScreen() {
               }}
             >
               <LinearGradient
-                colors={['#1E3A8A', '#2563EB']}
+                colors={['#124569', '#2563EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -653,8 +653,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#f27424']}
+            tintColor="#f27424"
           />
         }
       >
@@ -711,13 +711,15 @@ export default function HomeScreen() {
         </View>
 
         {/* Search Bar */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          onPress={() => router.push('/(tabs)/search')}
-        >
-          <Ionicons name="search" size={20} color="#666" />
-          <Text style={styles.searchPlaceholder}>Search</Text>
-        </TouchableOpacity>
+        {selectedCategory !== ProductCategory.MEDICINE && selectedCategory !== ProductCategory.VEHICLE && (
+          <TouchableOpacity
+            style={styles.searchBar}
+            onPress={() => router.push('/(tabs)/search')}
+          >
+            <Ionicons name="search" size={20} color="#666" />
+            <Text style={styles.searchPlaceholder}>Search</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Special Offers Carousel */}
         {renderSpecialOffersCarousel()}
@@ -1207,31 +1209,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   comingSoonImage: {
-    width: screenWidth * 0.8,
-    height: screenWidth * 0.8,
-    marginBottom: 30,
+    width: screenWidth * 0.6,
+    height: screenWidth * 0.6,
+    marginBottom: 20,
     borderRadius: Theme.borderRadius.xl,
   },
   comingSoonTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: Theme.colors.deepBlue,
     textAlign: 'center',
-    lineHeight: 40,
-    marginBottom: 16,
+    lineHeight: 36,
+    marginBottom: 12,
   },
   comingSoonSubtext: {
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.textGray,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
+    lineHeight: 22,
+    marginBottom: 24,
     paddingHorizontal: 10,
   },
   notifyButton: {
     flexDirection: 'row',
     width: '100%',
-    height: 56,
+    height: 48,
     backgroundColor: Theme.colors.deepBlue,
     borderRadius: Theme.borderRadius.lg,
     alignItems: 'center',

@@ -54,6 +54,13 @@ export default function EditProfileScreen() {
             return
         }
 
+        // Phone number validation
+        const phoneRegex = /^0[0-9]{9}$/
+        if (phoneNumber && !phoneRegex.test(phoneNumber.trim())) {
+            Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)')
+            return
+        }
+
         try {
             setIsSubmitting(true)
             const updateData = {

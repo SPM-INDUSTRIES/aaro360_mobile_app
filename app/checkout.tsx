@@ -17,6 +17,7 @@ export default function CheckoutScreen() {
   const { items, total, deliveryFee } = useSelector((state: RootState) => state.cart)
 
   const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -32,6 +33,10 @@ export default function CheckoutScreen() {
               console.log('Found saved address:', response.data.address)
               setDeliveryAddress(response.data.address)
             }
+            if (response.data?.phoneNumber) {
+              console.log('Found saved phone number:', response.data.phoneNumber)
+              setPhoneNumber(response.data.phoneNumber)
+            }
           } catch (error) {
             console.error('Failed to fetch user profile:', error)
           }
@@ -44,6 +49,18 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
       Alert.alert('Error', 'Please enter delivery address')
+      return
+    }
+
+    if (!phoneNumber.trim()) {
+      Alert.alert('Error', 'Please enter your phone number')
+      return
+    }
+
+    // Phone number validation
+    const phoneRegex = /^0[0-9]{9}$/
+    if (!phoneRegex.test(phoneNumber.trim())) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)')
       return
     }
 
@@ -76,6 +93,7 @@ export default function CheckoutScreen() {
           }
         }),
         deliveryAddress: String(deliveryAddress).trim(),
+        phoneNumber: String(phoneNumber).trim(),
         deliveryLatitude: parseFloat('25.2048'), // TODO: Get from location
         deliveryLongitude: parseFloat('55.2708'),
         deliveryFee: Number(deliveryFee || 0),
@@ -128,7 +146,7 @@ export default function CheckoutScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color="#124569" />
         </TouchableOpacity>
         <Text style={styles.title}>Checkout</Text>
         <View style={{ width: 24 }} />
@@ -147,6 +165,17 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Phone Number</Text>
+          <TextInput
+            style={styles.inputPhone}
+            placeholder="Enter your phone number"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
           <TouchableOpacity
             style={[
@@ -155,10 +184,10 @@ export default function CheckoutScreen() {
             ]}
             onPress={() => setPaymentMethod('cash_on_delivery')}
           >
-            <Ionicons name="cash-outline" size={24} color="#000" />
+            <Ionicons name="cash-outline" size={24} color="#124569" />
             <Text style={styles.paymentText}>Cash on Delivery</Text>
             {paymentMethod === 'cash_on_delivery' && (
-              <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+              <Ionicons name="checkmark-circle" size={24} color="#f27424" />
             )}
           </TouchableOpacity>
         </View>
@@ -177,7 +206,7 @@ export default function CheckoutScreen() {
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>රු{total.toFixed(2)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -214,7 +243,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#124569',
   },
   content: {
     flex: 1,
@@ -226,7 +255,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#124569',
     marginBottom: 15,
   },
   input: {
@@ -238,6 +267,13 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
+  inputPhone: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 16,
+  },
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -248,13 +284,13 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   paymentOptionActive: {
-    borderColor: '#FFD700',
+    borderColor: '#f27424',
     backgroundColor: '#FFF9E6',
   },
   paymentText: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: '#124569',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -267,7 +303,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    color: '#000000',
+    color: '#124569',
     fontWeight: '600',
   },
   totalRow: {
@@ -279,12 +315,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#124569',
   },
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#f27424',
   },
   footer: {
     padding: 20,
@@ -293,7 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   placeOrderButton: {
-    backgroundColor: '#000000',
+    backgroundColor: '#f27424',
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
@@ -302,7 +338,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   placeOrderButtonText: {
-    color: '#FFD700',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },

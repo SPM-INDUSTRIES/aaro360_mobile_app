@@ -94,14 +94,14 @@ export default function OrdersScreen() {
               await loadOrders()
               setRefreshing(false)
             }}
-            colors={['#F59E0B']}
-            tintColor="#F59E0B"
+            colors={['#f27424']}
+            tintColor="#f27424"
           />
         }
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#f27424" />
             <Text style={styles.loadingText}>Loading orders...</Text>
           </View>
         ) : orders.length === 0 ? (
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   content: {
     flex: 1,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   shopButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 12,
@@ -251,12 +251,12 @@ const styles = StyleSheet.create({
   orderTotal: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#f27424',
   },
   orderStatus: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1E3A8A',
+    color: '#124569',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 8,

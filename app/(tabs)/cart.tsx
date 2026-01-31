@@ -46,7 +46,7 @@ export default function CartScreen() {
             <Text style={styles.emptySubtext}>Add items to get started</Text>
             <TouchableOpacity
               style={styles.shopButton}
-              onPress={() => router.push('/(tabs)/index')}
+              onPress={() => router.push('/search')}
             >
               <Text style={styles.shopButtonText}>Start Shopping</Text>
             </TouchableOpacity>
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   clearText: {
     fontSize: 16,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 8,
@@ -236,14 +236,14 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1E3A8A',
+    borderColor: '#124569',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1E3A8A',
+    color: '#124569',
     minWidth: 40,
     textAlign: 'center',
   },
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   itemTotalText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   removeButton: {
     padding: 8,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#F59E0B',
+    color: '#f27424',
   },
   footer: {
     padding: 20,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkoutButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',

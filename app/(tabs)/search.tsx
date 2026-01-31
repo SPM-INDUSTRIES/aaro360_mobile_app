@@ -350,7 +350,7 @@ export default function SearchScreen() {
             style={styles.filterButton}
             onPress={() => setShowFilters(true)}
           >
-            <Ionicons name="options" size={24} color="#F59E0B" />
+            <Ionicons name="options" size={24} color="#f27424" />
           </TouchableOpacity>
         </View>
       </View>
@@ -359,7 +359,7 @@ export default function SearchScreen() {
       <ScrollView style={styles.results}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#f27424" />
             <Text style={styles.loadingText}>Searching...</Text>
           </View>
         ) : products.length > 0 ? (
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   productOriginalPrice: {
     fontSize: 14,
@@ -639,13 +639,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   addButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#F59E0B',
+    shadowColor: '#f27424',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
