@@ -33,7 +33,7 @@ export default function FoodCategoriesScreen() {
       setLoading(true)
       // Default to 'food' if no category provided, or map correctly
       const type = selectedCategory === ProductCategory.GROCERY ? 'grocery' : 'food'
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=${type}`)
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories?type=${type}`)
       const data = await response.json()
       setCategories(Array.isArray(data) ? data.filter((cat: FoodCategory) => cat.isActive) : [])
     } catch (error) {

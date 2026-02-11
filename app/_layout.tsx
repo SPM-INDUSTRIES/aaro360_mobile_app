@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Theme } from '../src/styles/theme'
+
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { Provider } from 'react-redux'
@@ -59,7 +61,7 @@ function AppContent() {
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#f27424" />
+        <ActivityIndicator size="large" color={Theme.colors.primary} />
       </View>
     )
   }
@@ -69,9 +71,9 @@ function AppContent() {
       <Stack
         initialRouteName="login"
         screenOptions={{
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: '#124569',
-          headerTitleStyle: { fontWeight: 'bold', color: '#124569' },
+          headerStyle: { backgroundColor: Theme.colors.white },
+          headerTintColor: Theme.colors.deepBlue,
+          headerTitleStyle: { fontWeight: 'bold', color: Theme.colors.deepBlue },
           headerShadowVisible: false,
         }}
       >
@@ -89,10 +91,14 @@ function AppContent() {
   )
 }
 
+import { AlertProvider } from '../src/context/AlertContext'
+
 export default function RootLayout() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <AlertProvider>
+        <AppContent />
+      </AlertProvider>
     </Provider>
   )
 }
@@ -102,6 +108,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.white,
   },
 })

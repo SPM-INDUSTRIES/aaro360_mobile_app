@@ -5,7 +5,7 @@ import { Product, ProductFilters, ProductsResponse } from '../types/product';
 // Update this IP to match your computer's local IP address
 // Find it with: ipconfig (Windows) or ifconfig (Mac/Linux)
 // For production, set EXPO_PUBLIC_API_URL environment variable to your production API URL
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const api = axios.create({
   baseURL: API_URL,

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Theme } from '../src/styles/theme'
+
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -41,7 +43,7 @@ export default function OrderTrackingScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#f27424" />
+        <ActivityIndicator size="large" color={Theme.colors.primary} />
         <Text style={styles.loadingText}>Loading order details...</Text>
       </View>
     )
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
   totalSummaryValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#f27424',
+    color: Theme.colors.primary,
   },
   detailRow: {
     flexDirection: 'row',
@@ -339,7 +341,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   homeButton: {
-    backgroundColor: '#f27424',
+    backgroundColor: Theme.colors.primary,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

@@ -80,8 +80,8 @@ export default function HomeScreen() {
   const fetchInitialData = async () => {
     try {
       setLoading(true)
-      // Fetch special offers for carousel - always fetch fresh data
-      const offers = await offerApi.getCarousel()
+      // Fetch all active offers to ensure we have data to display
+      const offers = await offerApi.getActive()
       setSpecialOffers(offers || [])
     } catch (error) {
       console.error('Failed to fetch initial data:', error)
@@ -95,7 +95,7 @@ export default function HomeScreen() {
     setRefreshing(true)
     try {
       // Refresh offers
-      const offers = await offerApi.getCarousel()
+      const offers = await offerApi.getActive()
       setSpecialOffers(offers || [])
 
       // Refresh category data if category is selected
@@ -115,7 +115,7 @@ export default function HomeScreen() {
 
       if (category === ProductCategory.ECHANELLING) {
         // For medicine/Pharmacy, fetch hospitals/pharmacies
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=pharmacy`)
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/vendors?type=pharmacy`)
         const vendors = await response.json()
         setHospitals(Array.isArray(vendors) ? vendors : vendors.data || [])
         setTrendingBrands([])
@@ -127,13 +127,13 @@ export default function HomeScreen() {
         const vendorType = category === ProductCategory.FOOD ? 'restaurant' : 'grocery_store'
 
         // Fetch vendors (restaurants/stores) for Trending Brands
-        const vendorsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors?type=${vendorType}`)
+        const vendorsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/vendors?type=${vendorType}`)
         const vendorsData = await vendorsResponse.json()
         setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData.data || [])
 
         // Fetch food categories if Food is selected
         if (category === ProductCategory.FOOD) {
-          const categoriesResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=food`)
+          const categoriesResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories?type=food`)
           const categoriesData = await categoriesResponse.json()
           setFoodCategories(Array.isArray(categoriesData) ? categoriesData.filter((cat: FoodCategory) => cat.isActive).slice(0, 6) : [])
         } else {
@@ -146,7 +146,7 @@ export default function HomeScreen() {
         // For both Food and Grocery, fetch food_items from food_items table
         try {
           // Fetch food items from food_items table
-          const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items`)
+          const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-items`)
           const foodItemsData = await foodItemsResponse.json()
           const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
@@ -269,24 +269,27 @@ export default function HomeScreen() {
   }
 
   const getFilteredOffers = (): Offer[] => {
-    if (!selectedCategory) {
-      return specialOffers
+    if (!specialOffers || specialOffers.length === 0) {
+      return []
     }
 
     return specialOffers.filter((offer) => {
-      // Apply strict filtering based on category
+      // If no linkType is set, it's a general offer and should show in all main categories
+      if (!offer.linkType || offer.linkType === 'carousel' || offer.linkType === 'general') {
+        return true
+      }
+
+      const type = offer.linkType.toLowerCase()
+
+      // Apply filtering based on category
       if (selectedCategory === ProductCategory.FOOD) {
-        // ONLY show food specific offers in food tab
-        return offer.linkType === 'food_restaurant' || offer.linkType === 'food_item'
+        return type.includes('food') || type.includes('restaurant')
       } else if (selectedCategory === ProductCategory.GROCERY) {
-        // Show grocery specific offers AND general offers in grocery tab
-        return !offer.linkType || offer.linkType === 'grocery_product'
-      } else if (selectedCategory === ProductCategory.MEDICINE) {
-        return offer.linkType === 'medicine_product'
-      } else if (selectedCategory === ProductCategory.ECHANELLING) {
-        return offer.linkType === 'echanelling_service'
+        return type.includes('grocery') || type.includes('store')
+      } else if (selectedCategory === ProductCategory.MEDICINE || selectedCategory === ProductCategory.ECHANELLING) {
+        return type.includes('medicine') || type.includes('pharmacy') || type.includes('hospital') || type.includes('doctor')
       } else if (selectedCategory === ProductCategory.VEHICLE) {
-        return offer.linkType === 'vehicle_service'
+        return type.includes('vehicle') || type.includes('car') || type.includes('bike')
       }
 
       return false
@@ -295,8 +298,22 @@ export default function HomeScreen() {
 
   // Render Special Offers Carousel (from offers table)
   const renderSpecialOffersCarousel = () => {
-    if (selectedCategory === ProductCategory.VEHICLE || selectedCategory === ProductCategory.MEDICINE) return null
     const filteredOffers = getFilteredOffers()
+
+    if (loading && specialOffers.length === 0) {
+      return (
+        <View style={styles.specialOffersSection}>
+          <View style={styles.sectionHeader}>
+            <Skeleton width={150} height={20} />
+            <Skeleton width={60} height={16} />
+          </View>
+          <View style={{ paddingHorizontal: 20 }}>
+            <Skeleton width={screenWidth - 40} height={180} borderRadius={Theme.borderRadius.xl} />
+          </View>
+        </View>
+      )
+    }
+
     if (filteredOffers.length === 0) return null
 
     return (
@@ -317,7 +334,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleOfferScroll}
           style={styles.offersCarousel}
-          contentContainerStyle={{ paddingLeft: 20, paddingRight: 0 }}
+          contentContainerStyle={{ paddingLeft: 20, paddingRight: 20 }}
         >
           {filteredOffers.map((offer, index) => (
             <TouchableOpacity
@@ -401,19 +418,20 @@ export default function HomeScreen() {
               key={category.id}
               style={styles.foodCategoryCard}
               onPress={() => router.push(`/food-category/${category.id}`)}
+              activeOpacity={0.8}
             >
-              {category.imageUrl ? (
-                <Image
-                  source={{ uri: category.imageUrl }}
-                  style={styles.foodCategoryImageContainer}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.foodCategoryImageContainer}>
+              <View style={styles.foodCategoryImageContainer}>
+                {category.imageUrl ? (
+                  <Image
+                    source={{ uri: category.imageUrl }}
+                    style={styles.foodCategoryImage}
+                    resizeMode="cover"
+                  />
+                ) : (
                   <Text style={styles.foodCategoryIcon}>🍽️</Text>
-                </View>
-              )}
-              <Text style={styles.foodCategoryName}>{category.name}</Text>
+                )}
+              </View>
+              <Text style={styles.foodCategoryName} numberOfLines={1}>{category.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -467,7 +485,7 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.allOffersSection}>
-        <Text style={styles.sectionTitle}>Top Orders</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: Theme.spacing.md }]}>Top Orders</Text>
         {loading ? (
           <ActivityIndicator size="large" color={Theme.colors.primary} style={styles.loader} />
         ) : allOffers.length > 0 ? (
@@ -488,7 +506,7 @@ export default function HomeScreen() {
                 }}
               >
                 {offer.mainImage ? (
-                  <Image source={{ uri: offer.mainImage }} style={styles.allOfferImage} />
+                  <Image source={{ uri: offer.mainImage }} style={styles.allOfferImage} resizeMode="cover" />
                 ) : (
                   <View style={[styles.allOfferImage, styles.placeholderImage]}>
                     <Text style={styles.placeholderEmoji}>📦</Text>
@@ -554,7 +572,7 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.hospitalsSection}>
-        <Text style={styles.sectionTitle}>Hospitals & Pharmacies</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: Theme.spacing.md }]}>Hospitals & Pharmacies</Text>
         <ScrollView style={styles.hospitalsList}>
           {hospitals.map((hospital) => {
             // Use coverImageUrl first, then logoUrl as fallback
@@ -633,10 +651,10 @@ export default function HomeScreen() {
           />
           <Text style={styles.comingSoonTitle}>{content.title}</Text>
           <Text style={styles.comingSoonSubtext}>{content.subtext}</Text>
-          <TouchableOpacity style={styles.notifyButton}>
+          {/* <TouchableOpacity style={styles.notifyButton}>
             <Ionicons name="notifications-outline" size={20} color={Theme.colors.white} />
             <Text style={styles.notifyButtonText}>Notify Me When Ready</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     )
@@ -670,6 +688,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.profileButton}
               onPress={() => router.push('/profile')}
+              activeOpacity={0.7}
             >
               {user?.profilePicture ? (
                 <Image source={{ uri: user.profilePicture }} style={styles.headerAvatar} />
@@ -685,7 +704,7 @@ export default function HomeScreen() {
 
           {/* Top Categories */}
           <View style={styles.topCategoriesSection}>
-            <Text style={styles.sectionTitle}>Top Categories</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: Theme.spacing.md }]}>Top Categories</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
               {categories.map((category) => (
                 <TouchableOpacity
@@ -695,6 +714,7 @@ export default function HomeScreen() {
                     selectedCategory === category.apiType && styles.categoryCardActive,
                   ]}
                   onPress={() => handleCategoryPress(category.apiType)}
+                  activeOpacity={0.7}
                 >
                   <View style={[
                     styles.categoryIconContainer,
@@ -703,7 +723,7 @@ export default function HomeScreen() {
                   ]}>
                     <Text style={styles.categoryIcon}>{category.icon}</Text>
                   </View>
-                  <Text style={styles.categoryName}>{category.name}</Text>
+                  <Text style={styles.categoryName} numberOfLines={1}>{category.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -804,7 +824,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: Theme.colors.deepBlue,
-    marginBottom: Theme.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -814,7 +833,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   seeAllText: {
-    color: '#0066FF',
+    color: Theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -829,7 +848,7 @@ const styles = StyleSheet.create({
   categoryCard: {
     alignItems: 'center',
     marginRight: 16,
-    width: 70,
+    width: 85,
   },
   categoryCardActive: {
     // Active state styling handled in icon container
@@ -897,7 +916,6 @@ const styles = StyleSheet.create({
   offerImage: {
     width: '100%',
     height: '100%',
-    opacity: 0.8,
   },
   offerGradientOverlay: {
     position: 'absolute',
@@ -973,33 +991,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   foodCategoryCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 15,
+    width: (screenWidth - 55) / 2,
+    backgroundColor: Theme.colors.white,
+    borderRadius: 16,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Theme.shadows.small,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   foodCategoryImageContainer: {
     width: '100%',
-    height: 120,
-    backgroundColor: '#F5F5F5',
+    height: 110,
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  foodCategoryImage: {
+    width: '100%',
+    height: '100%',
   },
   foodCategoryIcon: {
-    fontSize: 48,
+    fontSize: 40,
   },
   foodCategoryName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: Theme.colors.textDark,
     textAlign: 'center',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   trendingBrandsSection: {
     marginBottom: 30,
@@ -1062,10 +1084,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   allOfferSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     color: Theme.colors.textGray,
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   allOfferTags: {
     flexDirection: 'row',

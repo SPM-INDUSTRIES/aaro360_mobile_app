@@ -3,7 +3,7 @@ import axios from 'axios'
 // Use local network IP for mobile devices, localhost for web
 // Update this IP to match your computer's local IP address
 // For production, set EXPO_PUBLIC_API_URL environment variable to your production API URL
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.3:3001'
+export const API_URL = process.env.EXPO_PUBLIC_API_URL
 
 // Log API URL in development for debugging (remove sensitive info in production)
 if (__DEV__) {
@@ -51,6 +51,8 @@ export const authApi = {
     baseApi.post('/auth/phone-register', data),
   sendOtp: (data: { email: string }) => baseApi.post('/auth/send-otp', data),
   verifyOtp: (data: { email: string; otp: string }) => baseApi.post('/auth/verify-otp', data),
+  forgotPassword: (email: string) => baseApi.post('/auth/forgot-password', { email }),
+  resetPassword: (data: any) => baseApi.post('/auth/reset-password', data),
   refreshToken: (data: { refreshToken: string }) => baseApi.post('/auth/refresh', data),
   logout: () => api.post('/auth/logout'), // Logout still uses interceptors for the access token
 }

@@ -77,25 +77,27 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true)
 
-      // First fetch restaurant to know its type
-      const restaurantRes = await fetch(`${API_URL}/vendors/${restaurantId}`)
-      const restaurantData = await restaurantRes.json()
-      setRestaurant(restaurantData)
-
-      // Determine category type based on vendor type
-      const categoryType = restaurantData.type === 'grocery_store' ? 'grocery' : 'food'
-
-      // Fetch food items and relevant categories
-      const [foodItemsRes, categoriesRes] = await Promise.all([
+      // Parallelize all requests to remove sequential blocking
+      const [restaurantRes, foodItemsRes, categoriesRes] = await Promise.all([
+        fetch(`${API_URL}/vendors/${restaurantId}`),
         fetch(`${API_URL}/food-items/restaurant/${restaurantId}`),
-        fetch(`${API_URL}/food-categories?type=${categoryType}`),
+        fetch(`${API_URL}/food-categories`),
       ])
 
-      const foodItemsData = await foodItemsRes.json()
-      const categoriesData = await categoriesRes.json()
+      const [restaurantData, foodItemsData, categoriesData] = await Promise.all([
+        restaurantRes.json(),
+        foodItemsRes.json(),
+        categoriesRes.json(),
+      ])
 
+      setRestaurant(restaurantData)
       setFoodItems(foodItemsData)
-      setCategories(categoriesData)
+
+      // Filter categories locally based on vendor type
+      const targetType = restaurantData.type === 'grocery_store' ? 'grocery' : 'food'
+      const filteredCategories = categoriesData.filter((cat: any) => cat.type === targetType)
+      setCategories(filteredCategories)
+
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
@@ -215,7 +217,7 @@ export default function RestaurantDetailScreen() {
         {/* Menu Items Skeleton */}
         <View style={styles.menuContainer}>
           <Skeleton width={120} height={24} style={{ marginBottom: 15 }} />
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <View key={i} style={[styles.foodCard, { height: 120 }]}>
               <Skeleton width={120} height={120} borderRadius={0} />
               <View style={{ flex: 1, padding: 12 }}>

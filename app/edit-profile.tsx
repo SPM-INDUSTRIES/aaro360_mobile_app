@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native'
 import { useState, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -8,6 +8,7 @@ import { userApi } from '../src/lib/api'
 import { updateUser } from '../src/store/slices/authSlice'
 import { Theme } from '../src/styles/theme'
 import * as ImagePicker from 'expo-image-picker'
+import { useAlert } from '../src/context/AlertContext'
 
 export default function EditProfileScreen() {
     const router = useRouter()
@@ -21,12 +22,13 @@ export default function EditProfileScreen() {
     const [city, setCity] = useState((user as any)?.city || '')
     const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const { showAlert } = useAlert()
 
     const handlePickImage = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!')
+                showAlert({ title: 'Permission Denied', message: 'Sorry, we need camera roll permissions to make this work!', type: 'warning' })
                 return
             }
 
@@ -44,20 +46,20 @@ export default function EditProfileScreen() {
             }
         } catch (error) {
             console.error('Pick image error:', error)
-            Alert.alert('Error', 'Failed to pick image')
+            showAlert({ title: 'Error', message: 'Failed to pick image', type: 'error' })
         }
     }
 
     const handleSave = async () => {
         if (!firstName.trim() || !lastName.trim()) {
-            Alert.alert('Error', 'First and last name are required')
+            showAlert({ title: 'Error', message: 'First and last name are required', type: 'warning' })
             return
         }
 
         // Phone number validation
         const phoneRegex = /^0[0-9]{9}$/
         if (phoneNumber && !phoneRegex.test(phoneNumber.trim())) {
-            Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)')
+            showAlert({ title: 'Invalid Phone Number', message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)', type: 'warning' })
             return
         }
 
@@ -77,12 +79,10 @@ export default function EditProfileScreen() {
             // Update local state
             dispatch(updateUser(updateData))
 
-            Alert.alert('Success', 'Profile updated successfully', [
-                { text: 'OK', onPress: () => router.back() }
-            ])
+            showAlert({ title: 'Success', message: 'Profile updated successfully', type: 'success', onConfirm: () => router.back() })
         } catch (error: any) {
             console.error('Update profile error:', error)
-            Alert.alert('Error', error.response?.data?.message || 'Failed to update profile')
+            showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to update profile', type: 'error' })
         } finally {
             setIsSubmitting(false)
         }

@@ -50,8 +50,8 @@ export default function FoodCategoryDetailScreen() {
     try {
       setLoading(true)
       const [categoryRes, foodItemsRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories/${categoryId}`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items/category/${categoryId}`),
+        fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories/${categoryId}`),
+        fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-items/category/${categoryId}`),
       ])
 
       const categoryData = await categoryRes.json()
