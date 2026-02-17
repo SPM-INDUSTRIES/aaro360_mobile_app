@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Aaro360",
-    "slug": "aaro360-mobile",
+    "slug": "aaro360",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/appicon/icon.png",
@@ -11,12 +11,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aaro360.app"
+      "bundleIdentifier": "com.aaro360.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "jsEngine": "jsc"
     },
     "android": {
       "minSdkVersion": 24,
@@ -41,7 +43,9 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-router",
@@ -59,8 +63,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "2c6b3657-2326-4bea-9d19-83af5375dfc3"
+        "projectId": "ce4c1e37-5d82-44dc-8983-8f714bd3ca45"
       }
-    }
+    },
+    "owner": "heeshan"
   }
 }

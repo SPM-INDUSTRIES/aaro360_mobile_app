@@ -22,9 +22,7 @@ import { loginWithEmail, loginWithGoogle, clearError, loginWithPhone } from '../
 import * as Google from 'expo-auth-session/providers/google'
 import * as WebBrowser from 'expo-web-browser'
 import {
-  sendOTP,
   verifyOTP,
-  formatPhoneNumber,
 } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
 import { Theme } from '../src/styles/theme'
