@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
+  Alert,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ProductCategory } from '../../types/product'
@@ -32,8 +33,57 @@ export default function FilterModal({
   onApplyFilters,
 }: FilterModalProps) {
   const [localFilters, setLocalFilters] = useState(filters)
+  const [priceError, setPriceError] = useState('')
+
+  useState(() => {
+    // Check initial prices
+    const min = parseFloat(localFilters.minPrice || '0')
+    const max = parseFloat(localFilters.maxPrice || '0')
+    if (localFilters.minPrice && localFilters.maxPrice && !isNaN(min) && !isNaN(max) && min > max) {
+      setPriceError('Min should be less than Max')
+    }
+  })
+
+  const handlePriceChange = (type: 'min' | 'max', value: string) => {
+    const newFilters = { ...localFilters, [type + 'Price']: value }
+    setLocalFilters(newFilters)
+
+    const min = parseFloat(type === 'min' ? value : localFilters.minPrice || '0')
+    const max = parseFloat(type === 'max' ? value : localFilters.maxPrice || '0')
+
+    if ((type === 'min' ? value : localFilters.minPrice) &&
+      (type === 'max' ? value : localFilters.maxPrice) &&
+      !isNaN(min) && !isNaN(max) && min > max) {
+      setPriceError('Min should be less than Max')
+    } else {
+      setPriceError('')
+    }
+  }
 
   const handleApply = () => {
+    const min = parseFloat(localFilters.minPrice || '0')
+    const max = parseFloat(localFilters.maxPrice || '0')
+
+    if (localFilters.minPrice && isNaN(min)) {
+      Alert.alert('Invalid Price', 'Please enter a valid minimum price')
+      return
+    }
+
+    if (localFilters.maxPrice && isNaN(max)) {
+      Alert.alert('Invalid Price', 'Please enter a valid maximum price')
+      return
+    }
+
+    if (min < 0 || (localFilters.maxPrice && max < 0)) {
+      Alert.alert('Invalid Price', 'Price cannot be negative')
+      return
+    }
+
+    if (localFilters.minPrice && localFilters.maxPrice && min > max) {
+      Alert.alert('Invalid Price', 'Minimum price cannot be greater than maximum price')
+      return
+    }
+
     onApplyFilters(localFilters)
     onClose()
   }
@@ -68,7 +118,12 @@ export default function FilterModal({
             {/* Category */}
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Category</Text>
-              <View style={styles.optionsContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.categoriesScrollView}
+                contentContainerStyle={styles.optionsScrollContent}
+              >
                 {[
                   { id: '', name: 'All' },
                   { id: ProductCategory.FOOD, name: 'Food' },
@@ -98,7 +153,7 @@ export default function FilterModal({
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </View>
 
             {/* Price Range */}
@@ -109,7 +164,7 @@ export default function FilterModal({
                   style={styles.priceInput}
                   placeholder="Min"
                   value={localFilters.minPrice}
-                  onChangeText={(text) => setLocalFilters({ ...localFilters, minPrice: text })}
+                  onChangeText={(text) => handlePriceChange('min', text)}
                   keyboardType="numeric"
                   placeholderTextColor="#999"
                 />
@@ -118,11 +173,12 @@ export default function FilterModal({
                   style={styles.priceInput}
                   placeholder="Max"
                   value={localFilters.maxPrice}
-                  onChangeText={(text) => setLocalFilters({ ...localFilters, maxPrice: text })}
+                  onChangeText={(text) => handlePriceChange('max', text)}
                   keyboardType="numeric"
                   placeholderTextColor="#999"
                 />
               </View>
+              {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
             </View>
 
             {/* Rating */}
@@ -232,10 +288,13 @@ const styles = StyleSheet.create({
   ratingTextActive: {
     // No change needed
   },
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  categoriesScrollView: {
+    marginHorizontal: -20,
+  },
+  optionsScrollContent: {
+    paddingHorizontal: 20,
     gap: 10,
+    flexDirection: 'row',
   },
   optionButton: {
     paddingHorizontal: 20,
@@ -310,5 +369,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '600',
   },
 })

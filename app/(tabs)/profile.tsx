@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSelector } from 'react-redux'
@@ -6,6 +6,7 @@ import { RootState, AppDispatch, useAppDispatch } from '../../src/store/store'
 import { logoutUser, updateUser } from '../../src/store/slices/authSlice'
 import { userApi } from '../../src/lib/api'
 import { useCallback } from 'react'
+import { useAlert } from '../../src/context/AlertContext'
 
 export default function ProfileScreen() {
   const router = useRouter()
@@ -31,25 +32,19 @@ export default function ProfileScreen() {
     }, [user?.id])
   )
 
+  const { showAlert } = useAlert()
+
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await dispatch(logoutUser())
-            router.replace('/login')
-          },
-        },
-      ]
-    )
+    showAlert({
+      title: 'Logout',
+      message: 'Are you sure you want to logout from your account?',
+      type: 'warning',
+      confirmText: 'Logout',
+      onConfirm: async () => {
+        await dispatch(logoutUser())
+        router.replace('/login')
+      }
+    })
   }
 
   if (!user) {
@@ -70,6 +65,18 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -94,10 +101,8 @@ export default function ProfileScreen() {
             {user.firstName} {user.lastName}
           </Text>
           <Text style={styles.email}>{user.email}</Text>
-          {user.role && (
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
-            </View>
+          {(user as any).phoneNumber && (
+            <Text style={styles.phoneText}>{(user as any).phoneNumber}</Text>
           )}
         </View>
 
@@ -105,18 +110,14 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => router.push('/edit-profile')}
+            activeOpacity={0.7}
           >
             <Ionicons name="person-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Edit Profile</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          {(user as any).phoneNumber && (
-            <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={20} color="#666" />
-              <Text style={styles.infoText}>{(user as any).phoneNumber}</Text>
-            </View>
-          )}
+
 
           {(user as any).address && (
             <View style={styles.infoRow}>
@@ -125,25 +126,25 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
             <Ionicons name="location-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Addresses</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
             <Ionicons name="card-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Payment Methods</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
             <Ionicons name="settings-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
             <Ionicons name="help-circle-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -152,13 +153,14 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={[styles.menuItem, styles.logoutItem]}
             onPress={handleLogout}
+            activeOpacity={0.7}
           >
             <Ionicons name="log-out-outline" size={24} color="#FF0000" />
             <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </View >
   )
 }
 
@@ -171,8 +173,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 60,
     paddingBottom: 40,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#000000',
   },
   header: {
     alignItems: 'center',
@@ -190,7 +213,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -204,21 +227,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  roleBadge: {
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: '#1E3A8A',
-    borderRadius: 12,
+  phoneText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+
   loginButton: {
     marginTop: 20,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,

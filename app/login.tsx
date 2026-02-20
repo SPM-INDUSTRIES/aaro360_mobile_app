@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +28,8 @@ import {
 import { ConfirmationResult } from 'firebase/auth'
 import { Theme } from '../src/styles/theme'
 import { Ionicons } from '@expo/vector-icons'
+import { authApi } from '../src/lib/api'
+import { useAlert } from '../src/context/AlertContext'
 
 const { width } = Dimensions.get('window')
 
@@ -41,6 +42,7 @@ export default function LoginScreen() {
   const { status, error, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
   )
+  const { showAlert } = useAlert()
 
   const [authMode, setAuthMode] = useState<'email' | 'mobile'>('email')
   const [email, setEmail] = useState('')
@@ -52,6 +54,16 @@ export default function LoginScreen() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
+
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotStep, setForgotStep] = useState<'email' | 'otp' | 'newPassword'>('email')
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotOtp, setForgotOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
@@ -67,7 +79,7 @@ export default function LoginScreen() {
         dispatch(loginWithGoogle(id_token))
       }
     } else if (response?.type === 'error') {
-      Alert.alert('Authentication Error', response.error?.message || 'Failed to authenticate with Google')
+      showAlert({ title: 'Authentication Error', message: response.error?.message || 'Failed to authenticate with Google', type: 'error' })
     }
   }, [response])
 
@@ -81,7 +93,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (error) {
-      Alert.alert('Login Error', error)
+      showAlert({ title: 'Login Error', message: error, type: 'error' })
       dispatch(clearError())
     }
   }, [error])
@@ -100,7 +112,7 @@ export default function LoginScreen() {
 
   const handleEmailLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Validation Error', 'Please enter both email and password')
+      showAlert({ title: 'Validation Error', message: 'Please enter both email and password', type: 'warning' })
       return
     }
     dispatch(loginWithEmail({ email, password }))
@@ -108,29 +120,30 @@ export default function LoginScreen() {
 
   const handlePhoneLogin = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('Validation Error', 'Please enter your phone number')
+      showAlert({ title: 'Validation Error', message: 'Please enter your phone number', type: 'warning' })
       return
     }
     const digits = phoneNumber.replace(/\D/g, '')
     if (digits.length < 9 || digits.length > 10) {
-      Alert.alert('Validation Error', 'Please enter a valid 9-10 digit phone number')
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid 9-10 digit phone number', type: 'warning' })
       return
     }
 
-    Alert.alert(
-      'Phone Authentication Unavailable',
-      'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.'
-    )
+    showAlert({
+      title: 'Phone Authentication Unavailable',
+      message: 'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.',
+      type: 'info'
+    })
   }
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 6) {
-      Alert.alert('Validation Error', 'Please enter a valid 6-digit OTP')
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid 6-digit OTP', type: 'warning' })
       return
     }
 
     if (!confirmationResult) {
-      Alert.alert('Error', 'OTP session expired. Please request a new OTP.')
+      showAlert({ title: 'Error', message: 'OTP session expired. Please request a new OTP.', type: 'error' })
       return
     }
 
@@ -141,7 +154,7 @@ export default function LoginScreen() {
       setShowOtpModal(false)
       setOtp('')
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to verify OTP')
+      showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
     } finally {
       setOtpLoading(false)
     }
@@ -149,17 +162,78 @@ export default function LoginScreen() {
 
   const handleResendOtp = async () => {
     if (resendCountdown > 0) {
-      Alert.alert('Please wait', `You can resend OTP in ${resendCountdown} seconds`)
+      showAlert({ title: 'Please wait', message: `You can resend OTP in ${resendCountdown} seconds`, type: 'info' })
       return
     }
-    Alert.alert(
-      'Phone Authentication Unavailable',
-      'Phone authentication is currently disabled. Please use email.'
-    )
+    showAlert({
+      title: 'Phone Authentication Unavailable',
+      message: 'Phone authentication is currently disabled. Please use email.',
+      type: 'info'
+    })
   }
 
   const handleGoogleLogin = () => {
-    Alert.alert('Coming Soon', 'Google Login is currently under development.')
+    showAlert({ title: 'Coming Soon', message: 'Google Login is currently under development.', type: 'info' })
+  }
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      showAlert({ title: 'Error', message: 'Please enter your email address', type: 'warning' })
+      return
+    }
+    try {
+      setForgotLoading(true)
+      await authApi.forgotPassword(forgotEmail)
+      setForgotStep('otp')
+      setResendCountdown(60)
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to send recovery code', type: 'error' })
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const handleVerifyForgotOtp = async () => {
+    if (forgotOtp.length !== 6) {
+      showAlert({ title: 'Error', message: 'Please enter a valid 6-digit code', type: 'warning' })
+      return
+    }
+    setForgotStep('newPassword')
+  }
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 6) {
+      showAlert({ title: 'Error', message: 'Password must be at least 6 characters long', type: 'warning' })
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      showAlert({ title: 'Error', message: 'Passwords do not match', type: 'warning' })
+      return
+    }
+
+    try {
+      setForgotLoading(true)
+      await authApi.resetPassword({
+        email: forgotEmail,
+        otp: forgotOtp,
+        newPassword: newPassword
+      })
+      showAlert({ title: 'Success', message: 'Password has been reset successfully. Please login with your new password.', type: 'success' })
+      setShowForgotPassword(false)
+      resetForgotState()
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to reset password', type: 'error' })
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const resetForgotState = () => {
+    setForgotStep('email')
+    setForgotEmail('')
+    setForgotOtp('')
+    setNewPassword('')
+    setConfirmNewPassword('')
   }
 
   return (
@@ -248,7 +322,7 @@ export default function LoginScreen() {
                 <View style={styles.inputGroup}>
                   <View style={styles.labelRow}>
                     <Text style={styles.label}>Password</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowForgotPassword(true)}>
                       <Text style={styles.forgotPassword}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </View>
@@ -355,7 +429,7 @@ export default function LoginScreen() {
                   styles.socialButton,
                   status === 'loading' && styles.socialButtonDisabled,
                 ]}
-                onPress={() => Alert.alert('Coming Soon', 'Apple Login is currently under development.')}
+                onPress={() => showAlert({ title: 'Coming Soon', message: 'Apple Login is currently under development.', type: 'info' })}
                 disabled={status === 'loading'}
               >
                 <Ionicons name="logo-apple" size={20} color="#000000" />
@@ -450,6 +524,194 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotPassword}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowForgotPassword(false)
+          resetForgotState()
+        }}
+      >
+        <SafeAreaView style={styles.otpScreen}>
+          <View style={styles.otpHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowForgotPassword(false)
+                resetForgotState()
+              }}
+              style={styles.backBtn}
+            >
+              <Ionicons name="close" size={24} color={Theme.colors.textDark} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.otpContent}>
+            {forgotStep === 'email' && (
+              <>
+                <View style={styles.otpHeadlineSection}>
+                  <Text style={styles.otpTitle}>Forgot Password</Text>
+                  <Text style={styles.otpSubtitle}>
+                    Enter your email address and we'll send you a 6-digit code to reset your password.
+                  </Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email Address</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="mail-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="name@example.com"
+                      value={forgotEmail}
+                      onChangeText={setForgotEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, forgotLoading && styles.buttonDisabled]}
+                  onPress={handleForgotPassword}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Send Code</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {forgotStep === 'otp' && (
+              <>
+                <View style={styles.otpHeadlineSection}>
+                  <Text style={styles.otpTitle}>Verify Code</Text>
+                  <Text style={styles.otpSubtitle}>
+                    Enter the 6-digit code sent to {'\n'}
+                    <Text style={styles.otpPhone}>{forgotEmail}</Text>
+                  </Text>
+                </View>
+
+                <View style={styles.otpInputContainer}>
+                  <View style={styles.otpBoxRow}>
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.otpBox,
+                          forgotOtp.length === i && styles.otpBoxActive,
+                          forgotOtp.length > i && styles.otpBoxFilled
+                        ]}
+                      >
+                        <Text style={styles.otpBoxText}>{forgotOtp[i] || ''}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={styles.hiddenInput}
+                    value={forgotOtp}
+                    onChangeText={setForgotOtp}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </View>
+
+                <View style={[styles.resendTimerSection, { marginBottom: 24 }]}>
+                  <Text style={styles.resendLabel}>Didn't receive code? </Text>
+                  <TouchableOpacity disabled={resendCountdown > 0} onPress={handleForgotPassword}>
+                    <Text style={[styles.resendLink, resendCountdown > 0 && styles.resendDisabled]}>
+                      {resendCountdown > 0
+                        ? `Resend in 00:${resendCountdown.toString().padStart(2, '0')}`
+                        : 'Resend Now'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, (forgotOtp.length < 6 || forgotLoading) && styles.buttonDisabled]}
+                  onPress={handleVerifyForgotOtp}
+                  disabled={forgotOtp.length < 6 || forgotLoading}
+                >
+                  <Text style={styles.primaryButtonText}>Verify & Continue</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ marginTop: 24, alignItems: 'center' }}
+                  onPress={() => setForgotStep('email')}
+                >
+                  <Text style={styles.resendLink}>Change Email</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {forgotStep === 'newPassword' && (
+              <>
+                <View style={styles.otpHeadlineSection}>
+                  <Text style={styles.otpTitle}>New Password</Text>
+                  <Text style={styles.otpSubtitle}>
+                    Create a strong password for your account.
+                  </Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>New Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNewPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowNewPassword(!showNewPassword)}
+                      style={styles.eyeButton}
+                    >
+                      <Ionicons
+                        name={showNewPassword ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color={Theme.colors.textGray}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm New Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="••••••••"
+                      value={confirmNewPassword}
+                      onChangeText={setConfirmNewPassword}
+                      secureTextEntry={!showNewPassword}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, forgotLoading && styles.buttonDisabled]}
+                  onPress={handleResetPassword}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Reset Password</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>

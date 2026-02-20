@@ -1,4 +1,6 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native'
+import { Theme } from '../src/styles/theme'
+import * as Location from 'expo-location'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { store, RootState, useAppDispatch } from '../src/store/store'
@@ -7,6 +9,7 @@ import { orderApi, userApi } from '../src/lib/api'
 import { useState, useEffect, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useAlert } from '../src/context/AlertContext'
 
 const CUSTOMER_ID_STORAGE_KEY = '@aaro360/customerId'
 
@@ -15,42 +18,66 @@ export default function CheckoutScreen() {
   const dispatch = useAppDispatch()
   const { user } = useSelector((state: RootState) => state.auth)
   const { items, total, deliveryFee } = useSelector((state: RootState) => state.cart)
+  const { showAlert } = useAlert()
 
   const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-  // Fetch user profile to get saved address whenever the screen is focused
+  // Fetch user profile and location whenever the screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchUserProfile = async () => {
         if (user?.id) {
           try {
-            console.log('Fetching profile for user:', user.id)
             const response = await userApi.getProfile(user.id)
-            if (response.data?.address) {
-              console.log('Found saved address:', response.data.address)
-              setDeliveryAddress(response.data.address)
-            }
+            if (response.data?.address) setDeliveryAddress(response.data.address)
+            if (response.data?.phoneNumber) setPhoneNumber(response.data.phoneNumber)
           } catch (error) {
             console.error('Failed to fetch user profile:', error)
           }
         }
       }
+      const fetchLocation = async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync()
+          if (status === 'granted') {
+            const pos = await Location.getCurrentPositionAsync({})
+            setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+          }
+        } catch (error) {
+          console.error('Failed to get location:', error)
+        }
+      }
       fetchUserProfile()
+      fetchLocation()
     }, [user?.id])
   )
 
   const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
-      Alert.alert('Error', 'Please enter delivery address')
+      showAlert({ title: 'Error', message: 'Please enter delivery address', type: 'warning' })
+      return
+    }
+
+    if (!phoneNumber.trim()) {
+      showAlert({ title: 'Error', message: 'Please enter your phone number', type: 'warning' })
+      return
+    }
+
+    // Phone number validation
+    const phoneRegex = /^0[0-9]{9}$/
+    if (!phoneRegex.test(phoneNumber.trim())) {
+      showAlert({ title: 'Invalid Phone Number', message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)', type: 'warning' })
       return
     }
 
     setIsSubmitting(true)
     try {
       if (!user?.id) {
-        Alert.alert('Error', 'You must be logged in to place an order')
+        showAlert({ title: 'Error', message: 'You must be logged in to place an order', type: 'error' })
         return
       }
 
@@ -58,7 +85,7 @@ export default function CheckoutScreen() {
 
       // Ensure all items have valid data
       if (items.length === 0) {
-        Alert.alert('Error', 'Your cart is empty')
+        showAlert({ title: 'Error', message: 'Your cart is empty', type: 'warning' })
         return
       }
 
@@ -76,8 +103,9 @@ export default function CheckoutScreen() {
           }
         }),
         deliveryAddress: String(deliveryAddress).trim(),
-        deliveryLatitude: parseFloat('25.2048'), // TODO: Get from location
-        deliveryLongitude: parseFloat('55.2708'),
+        phoneNumber: String(phoneNumber).trim(),
+        deliveryLatitude: location?.lat ?? 7.7124,
+        deliveryLongitude: location?.lng ?? 81.6924,
         deliveryFee: Number(deliveryFee || 0),
         discount: Number(0), // Add discount field
         paymentMethod: String(paymentMethod || 'cash_on_delivery'),
@@ -118,7 +146,7 @@ export default function CheckoutScreen() {
           error.message ||
           'Unknown error'
       }
-      Alert.alert('Order Error', errorMessage)
+      showAlert({ title: 'Order Error', message: errorMessage, type: 'error' })
     } finally {
       setIsSubmitting(false)
     }
@@ -128,7 +156,7 @@ export default function CheckoutScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
         </TouchableOpacity>
         <Text style={styles.title}>Checkout</Text>
         <View style={{ width: 24 }} />
@@ -147,6 +175,17 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Phone Number</Text>
+          <TextInput
+            style={styles.inputPhone}
+            placeholder="Enter your phone number"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
           <TouchableOpacity
             style={[
@@ -155,10 +194,10 @@ export default function CheckoutScreen() {
             ]}
             onPress={() => setPaymentMethod('cash_on_delivery')}
           >
-            <Ionicons name="cash-outline" size={24} color="#000" />
+            <Ionicons name="cash-outline" size={24} color={Theme.colors.deepBlue} />
             <Text style={styles.paymentText}>Cash on Delivery</Text>
             {paymentMethod === 'cash_on_delivery' && (
-              <Ionicons name="checkmark-circle" size={24} color="#FFD700" />
+              <Ionicons name="checkmark-circle" size={24} color={Theme.colors.primary} />
             )}
           </TouchableOpacity>
         </View>
@@ -177,7 +216,7 @@ export default function CheckoutScreen() {
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>රු{total.toFixed(2)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -200,7 +239,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.white,
     paddingTop: 60,
   },
   header: {
@@ -209,12 +248,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: Theme.colors.border,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: Theme.colors.deepBlue,
   },
   content: {
     flex: 1,
@@ -226,35 +265,42 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: Theme.colors.deepBlue,
     marginBottom: 15,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Theme.colors.border,
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
   },
+  inputPhone: {
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 16,
+  },
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Theme.colors.border,
     borderRadius: 12,
     gap: 15,
   },
   paymentOptionActive: {
-    borderColor: '#FFD700',
-    backgroundColor: '#FFF9E6',
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.orangeLight,
   },
   paymentText: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: Theme.colors.deepBlue,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -263,37 +309,37 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Theme.colors.textGray,
   },
   summaryValue: {
     fontSize: 14,
-    color: '#000000',
+    color: Theme.colors.deepBlue,
     fontWeight: '600',
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: Theme.colors.border,
     paddingTop: 10,
     marginTop: 10,
   },
   totalLabel: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: Theme.colors.deepBlue,
   },
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: Theme.colors.primary,
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: Theme.colors.border,
+    backgroundColor: Theme.colors.white,
   },
   placeOrderButton: {
-    backgroundColor: '#000000',
+    backgroundColor: Theme.colors.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
@@ -302,7 +348,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   placeOrderButtonText: {
-    color: '#FFD700',
+    color: Theme.colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },

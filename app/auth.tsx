@@ -3,6 +3,8 @@ import { useRouter, useRootNavigationState } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { RootState } from '../src/store/store'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
+import { Theme } from '../src/styles/theme'
+
 
 export default function AuthScreen() {
   const router = useRouter()
@@ -24,7 +26,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#F59E0B" />
+      <ActivityIndicator size="large" color={Theme.colors.primary} />
     </View>
   )
 }
@@ -32,7 +34,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.white,
   },
   content: {
     flex: 1,
@@ -48,13 +50,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: Theme.colors.deepBlue,
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: Theme.colors.textGray,
     textAlign: 'center',
     marginBottom: 48,
     paddingHorizontal: 20,

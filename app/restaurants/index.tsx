@@ -41,7 +41,7 @@ export default function AllRestaurantsScreen() {
     try {
       setLoading(true)
       const vendorType = category === ProductCategory.FOOD ? 'restaurant' : category === ProductCategory.GROCERY ? 'grocery_store' : 'all'
-      const url = `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors${vendorType !== 'all' ? `?type=${vendorType}` : ''}`
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/vendors${vendorType !== 'all' ? `?type=${vendorType}` : ''}`
       const response = await fetch(url)
       const data = await response.json()
       setRestaurants(Array.isArray(data) ? data : data.data || [])

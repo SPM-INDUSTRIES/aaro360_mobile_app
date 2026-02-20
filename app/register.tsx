@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import { sendOTP, verifyOTP, formatPhoneNumber } from '../src/services/phoneAuth
 import { ConfirmationResult } from 'firebase/auth'
 import { Theme } from '../src/styles/theme'
 import { Ionicons } from '@expo/vector-icons'
+import { useAlert } from '../src/context/AlertContext'
 
 const { width } = Dimensions.get('window')
 
@@ -29,6 +29,7 @@ export default function RegisterScreen() {
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
   const { status, error } = useSelector((state: RootState) => state.auth)
+  const { showAlert } = useAlert()
 
   const [authMode, setAuthMode] = useState<'email' | 'mobile'>('email')
   const [step, setStep] = useState<'form' | 'otp'>('form')
@@ -46,7 +47,7 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     if (error) {
-      Alert.alert('Error', error)
+      showAlert({ title: 'Error', message: error, type: 'error' })
       dispatch(clearError())
     }
   }, [error])
@@ -65,38 +66,39 @@ export default function RegisterScreen() {
 
   const validateEmailForm = (): boolean => {
     if (!firstName.trim()) {
-      Alert.alert('Validation Error', 'Please enter your first name')
+      showAlert({ title: 'Validation Error', message: 'Please enter your first name', type: 'warning' })
       return false
     }
     if (!lastName.trim()) {
-      Alert.alert('Validation Error', 'Please enter your last name')
+      showAlert({ title: 'Validation Error', message: 'Please enter your last name', type: 'warning' })
       return false
     }
     if (!email.trim()) {
-      Alert.alert('Validation Error', 'Please enter your email')
+      showAlert({ title: 'Validation Error', message: 'Please enter your email', type: 'warning' })
       return false
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address')
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid email address', type: 'warning' })
       return false
     }
     if (!password) {
-      Alert.alert('Validation Error', 'Please enter a password')
+      showAlert({ title: 'Validation Error', message: 'Please enter a password', type: 'warning' })
       return false
     }
     if (password.length < 8) {
-      Alert.alert('Validation Error', 'Password must be at least 8 characters long')
+      showAlert({ title: 'Validation Error', message: 'Password must be at least 8 characters long', type: 'warning' })
       return false
     }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      Alert.alert(
-        'Validation Error',
-        'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-      )
+      showAlert({
+        title: 'Validation Error',
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+        type: 'warning'
+      })
       return false
     }
     if (password !== confirmPassword) {
-      Alert.alert('Validation Error', 'Passwords do not match')
+      showAlert({ title: 'Validation Error', message: 'Passwords do not match', type: 'warning' })
       return false
     }
     return true
@@ -104,20 +106,20 @@ export default function RegisterScreen() {
 
   const validatePhoneForm = (): boolean => {
     if (!firstName.trim()) {
-      Alert.alert('Validation Error', 'Please enter your first name')
+      showAlert({ title: 'Validation Error', message: 'Please enter your first name', type: 'warning' })
       return false
     }
     if (!lastName.trim()) {
-      Alert.alert('Validation Error', 'Please enter your last name')
+      showAlert({ title: 'Validation Error', message: 'Please enter your last name', type: 'warning' })
       return false
     }
     if (!phoneNumber.trim()) {
-      Alert.alert('Validation Error', 'Please enter your phone number')
+      showAlert({ title: 'Validation Error', message: 'Please enter your phone number', type: 'warning' })
       return false
     }
     const digits = phoneNumber.replace(/\D/g, '')
     if (digits.length < 9 || digits.length > 10) {
-      Alert.alert('Validation Error', 'Please enter a valid 9-10 digit phone number')
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid 9-10 digit phone number', type: 'warning' })
       return false
     }
     return true
@@ -133,16 +135,17 @@ export default function RegisterScreen() {
       }
     } else {
       if (!validatePhoneForm()) return
-      Alert.alert(
-        'Phone Authentication Unavailable',
-        'Phone authentication requires a reCAPTCHA verifier. Please use email registration.'
-      )
+      showAlert({
+        title: 'Phone Authentication Unavailable',
+        message: 'Phone authentication requires a reCAPTCHA verifier. Please use email registration.',
+        type: 'info'
+      })
     }
   }
 
   const handleResendOtp = async () => {
     if (countdown > 0) {
-      Alert.alert('Please wait', `You can resend OTP in ${countdown} seconds`)
+      showAlert({ title: 'Please wait', message: `You can resend OTP in ${countdown} seconds`, type: 'info' })
       return
     }
 
@@ -152,13 +155,13 @@ export default function RegisterScreen() {
         setCountdown(60)
       }
     } else {
-      Alert.alert('Phone Authentication Unavailable', 'Please use email.')
+      showAlert({ title: 'Phone Authentication Unavailable', message: 'Please use email.', type: 'info' })
     }
   }
 
   const handleRegister = async () => {
     if (!otp || otp.length !== 6) {
-      Alert.alert('Validation Error', 'Please enter a valid 6-digit OTP')
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid 6-digit OTP', type: 'warning' })
       return
     }
 
@@ -178,7 +181,7 @@ export default function RegisterScreen() {
       }
     } else {
       if (!confirmationResult) {
-        Alert.alert('Error', 'OTP session expired.')
+        showAlert({ title: 'Error', message: 'OTP session expired.', type: 'error' })
         return
       }
       // Phone register logic...
@@ -450,7 +453,7 @@ export default function RegisterScreen() {
             <View style={styles.socialGrid}>
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => Alert.alert('Coming Soon', 'Google Registration is currently under development.')}
+                onPress={() => showAlert({ title: 'Coming Soon', message: 'Google Registration is currently under development.', type: 'info' })}
               >
                 <Ionicons name="logo-google" size={20} color="#EA4335" />
                 <Text style={styles.socialButtonText}>Google</Text>
@@ -458,7 +461,7 @@ export default function RegisterScreen() {
 
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => Alert.alert('Coming Soon', 'Apple Registration is currently under development.')}
+                onPress={() => showAlert({ title: 'Coming Soon', message: 'Apple Registration is currently under development.', type: 'info' })}
               >
                 <Ionicons name="logo-apple" size={20} color="#000000" />
                 <Text style={styles.socialButtonText}>Apple</Text>
