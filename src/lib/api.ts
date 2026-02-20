@@ -72,11 +72,33 @@ export const orderApi = {
     api.patch(`/orders/${id}/status`, { status }),
 }
 
-// Search endpoints (to be implemented in backend)
+// Search endpoints
 export const searchApi = {
-  search: (query: string) => api.get(`/search?q=${query}`),
-  getCategories: () => api.get('/categories'),
-  getRestaurants: (filters?: any) => api.get('/restaurants', { params: filters }),
+  search: (query: string, type?: 'product' | 'food' | 'vendor' | 'all') =>
+    api.get('/search', { params: { q: query, type: type || 'all' } }),
+  getCategories: () => api.get('/food-categories'),
+  getRestaurants: (filters?: { type?: string }) => api.get('/vendors', { params: filters }),
+}
+
+// Vendor endpoints (use baseApi for public data - no auth required)
+export const vendorApi = {
+  getAll: (filters?: { type?: string }) => baseApi.get('/vendors', { params: filters }),
+  getById: (id: string) => baseApi.get(`/vendors/${id}`),
+}
+
+// Food item endpoints
+export const foodItemApi = {
+  getAll: () => baseApi.get('/food-items'),
+  getById: (id: number) => baseApi.get(`/food-items/${id}`),
+  getByRestaurant: (restaurantId: string) => baseApi.get(`/food-items/restaurant/${restaurantId}`),
+  getByCategory: (categoryId: number) => baseApi.get(`/food-items/category/${categoryId}`),
+}
+
+// Food category endpoints
+export const foodCategoryApi = {
+  getAll: (filters?: { type?: string }) => baseApi.get('/food-categories', { params: filters }),
+  getById: (id: number) => baseApi.get(`/food-categories/${id}`),
+  getActive: () => baseApi.get('/food-categories/active'),
 }
 
 export default api

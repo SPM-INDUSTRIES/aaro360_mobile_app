@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAppDispatch } from '../../src/store/store'
 import FilterModal from '../../src/components/search/FilterModal'
 import { productApi } from '../../src/lib/productApi'
+import { foodItemApi } from '../../src/lib/api'
 import { Product, ProductCategory } from '../../src/types/product'
 import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
-import { API_URL } from '../../src/lib/api'
 
 
 export default function SearchScreen() {
@@ -133,8 +133,8 @@ export default function SearchScreen() {
         if (categoryType === ProductCategory.FOOD || categoryType === ProductCategory.GROCERY) {
           try {
             // Fetch food items from food_items table
-            const foodItemsResponse = await fetch(`${API_URL}/food-items`)
-            const foodItemsData = await foodItemsResponse.json()
+            const foodItemsRes = await foodItemApi.getAll()
+            const foodItemsData = foodItemsRes.data
             const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
             // Filter by category type
@@ -226,8 +226,8 @@ export default function SearchScreen() {
 
       // Also search in food_items table for food and grocery items
       try {
-        const foodItemsResponse = await fetch(`${API_URL}/food-items`)
-        const foodItemsData = await foodItemsResponse.json()
+        const foodItemsRes = await foodItemApi.getAll()
+        const foodItemsData = foodItemsRes.data
         const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
         // Filter by search query (case-insensitive search in name and description)
@@ -373,13 +373,11 @@ export default function SearchScreen() {
                 style={styles.productItem}
                 activeOpacity={0.7}
                 onPress={() => {
-                  // Check if it's a food item (ID starts with "food-")
                   if (typeof product.id === 'string' && product.id.startsWith('food-')) {
                     const foodItemId = product.id.replace('food-', '')
                     router.push(`/food-item/${foodItemId}`)
                   } else {
-                    // TODO: Navigate to product detail page when created
-                    console.log('Product selected:', product.name)
+                    router.push(`/product/${product.id}`)
                   }
                 }}
               >

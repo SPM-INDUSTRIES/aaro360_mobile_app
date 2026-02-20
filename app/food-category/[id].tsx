@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
+import { foodCategoryApi, foodItemApi } from '../../src/lib/api'
 
 interface FoodCategory {
   id: number
@@ -50,15 +51,15 @@ export default function FoodCategoryDetailScreen() {
     try {
       setLoading(true)
       const [categoryRes, foodItemsRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories/${categoryId}`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-items/category/${categoryId}`),
+        foodCategoryApi.getById(Number(categoryId)),
+        foodItemApi.getByCategory(Number(categoryId)),
       ])
 
-      const categoryData = await categoryRes.json()
-      const foodItemsData = await foodItemsRes.json()
+      const categoryData = categoryRes.data
+      const foodItemsData = foodItemsRes.data
 
       setCategory(categoryData)
-      setFoodItems(foodItemsData)
+      setFoodItems(Array.isArray(foodItemsData) ? foodItemsData : [])
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {

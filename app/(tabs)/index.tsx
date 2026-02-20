@@ -6,6 +6,7 @@ import { CategoryType } from '../../src/types'
 import { Product, ProductCategory } from '../../src/types/product'
 import { productApi } from '../../src/lib/productApi'
 import { offerApi, Offer } from '../../src/lib/offerApi'
+import { vendorApi, foodItemApi, foodCategoryApi } from '../../src/lib/api'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Theme } from '../../src/styles/theme'
@@ -115,9 +116,9 @@ export default function HomeScreen() {
 
       if (category === ProductCategory.ECHANELLING) {
         // For medicine/Pharmacy, fetch hospitals/pharmacies
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/vendors?type=pharmacy`)
-        const vendors = await response.json()
-        setHospitals(Array.isArray(vendors) ? vendors : vendors.data || [])
+        const res = await vendorApi.getAll({ type: 'pharmacy' })
+        const vendors = res.data
+        setHospitals(Array.isArray(vendors) ? vendors : vendors?.data || [])
         setTrendingBrands([])
         setAllOffers([])
         setBestOffers([])
@@ -127,14 +128,14 @@ export default function HomeScreen() {
         const vendorType = category === ProductCategory.FOOD ? 'restaurant' : 'grocery_store'
 
         // Fetch vendors (restaurants/stores) for Trending Brands
-        const vendorsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/vendors?type=${vendorType}`)
-        const vendorsData = await vendorsResponse.json()
-        setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData.data || [])
+        const vendorsRes = await vendorApi.getAll({ type: vendorType })
+        const vendorsData = vendorsRes.data
+        setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData?.data || [])
 
         // Fetch food categories if Food is selected
         if (category === ProductCategory.FOOD) {
-          const categoriesResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories?type=food`)
-          const categoriesData = await categoriesResponse.json()
+          const categoriesRes = await foodCategoryApi.getAll({ type: 'food' })
+          const categoriesData = categoriesRes.data
           setFoodCategories(Array.isArray(categoriesData) ? categoriesData.filter((cat: FoodCategory) => cat.isActive).slice(0, 6) : [])
         } else {
           setFoodCategories([])
@@ -146,8 +147,8 @@ export default function HomeScreen() {
         // For both Food and Grocery, fetch food_items from food_items table
         try {
           // Fetch food items from food_items table
-          const foodItemsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-items`)
-          const foodItemsData = await foodItemsResponse.json()
+          const foodItemsRes = await foodItemApi.getAll()
+          const foodItemsData = foodItemsRes.data
           const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
           // Filter by category type
@@ -500,8 +501,7 @@ export default function HomeScreen() {
                     const foodItemId = offer.id.replace('food-', '')
                     router.push(`/food-item/${foodItemId}`)
                   } else {
-                    // TODO: Navigate to product detail page when created
-                    console.log('Product selected:', offer.name)
+                    router.push(`/product/${offer.id}`)
                   }
                 }}
               >

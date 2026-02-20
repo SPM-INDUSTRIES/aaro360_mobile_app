@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native'
 import { Theme } from '../src/styles/theme'
-
+import * as Location from 'expo-location'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { store, RootState, useAppDispatch } from '../src/store/store'
@@ -24,29 +24,35 @@ export default function CheckoutScreen() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-  // Fetch user profile to get saved address whenever the screen is focused
+  // Fetch user profile and location whenever the screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchUserProfile = async () => {
         if (user?.id) {
           try {
-            console.log('Fetching profile for user:', user.id)
             const response = await userApi.getProfile(user.id)
-            if (response.data?.address) {
-              console.log('Found saved address:', response.data.address)
-              setDeliveryAddress(response.data.address)
-            }
-            if (response.data?.phoneNumber) {
-              console.log('Found saved phone number:', response.data.phoneNumber)
-              setPhoneNumber(response.data.phoneNumber)
-            }
+            if (response.data?.address) setDeliveryAddress(response.data.address)
+            if (response.data?.phoneNumber) setPhoneNumber(response.data.phoneNumber)
           } catch (error) {
             console.error('Failed to fetch user profile:', error)
           }
         }
       }
+      const fetchLocation = async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync()
+          if (status === 'granted') {
+            const pos = await Location.getCurrentPositionAsync({})
+            setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+          }
+        } catch (error) {
+          console.error('Failed to get location:', error)
+        }
+      }
       fetchUserProfile()
+      fetchLocation()
     }, [user?.id])
   )
 
@@ -98,8 +104,8 @@ export default function CheckoutScreen() {
         }),
         deliveryAddress: String(deliveryAddress).trim(),
         phoneNumber: String(phoneNumber).trim(),
-        deliveryLatitude: parseFloat('25.2048'), // TODO: Get from location
-        deliveryLongitude: parseFloat('55.2708'),
+        deliveryLatitude: location?.lat ?? 7.7124,
+        deliveryLongitude: location?.lng ?? 81.6924,
         deliveryFee: Number(deliveryFee || 0),
         discount: Number(0), // Add discount field
         paymentMethod: String(paymentMethod || 'cash_on_delivery'),

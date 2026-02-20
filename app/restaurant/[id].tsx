@@ -9,7 +9,7 @@ import FloatingCartButton from '../../src/components/FloatingCartButton'
 import AddToCartModal from '../../src/components/AddToCartModal'
 import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
-import { API_URL } from '../../src/lib/api'
+import { vendorApi, foodItemApi, foodCategoryApi } from '../../src/lib/api'
 
 interface FoodCategory {
   id: number
@@ -77,25 +77,23 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true)
 
-      // Parallelize all requests to remove sequential blocking
+      // Parallelize all requests using shared API client
       const [restaurantRes, foodItemsRes, categoriesRes] = await Promise.all([
-        fetch(`${API_URL}/vendors/${restaurantId}`),
-        fetch(`${API_URL}/food-items/restaurant/${restaurantId}`),
-        fetch(`${API_URL}/food-categories`),
+        vendorApi.getById(restaurantId),
+        foodItemApi.getByRestaurant(restaurantId),
+        foodCategoryApi.getAll(),
       ])
 
-      const [restaurantData, foodItemsData, categoriesData] = await Promise.all([
-        restaurantRes.json(),
-        foodItemsRes.json(),
-        categoriesRes.json(),
-      ])
+      const restaurantData = restaurantRes.data
+      const foodItemsData = foodItemsRes.data
+      const categoriesData = Array.isArray(categoriesRes.data) ? categoriesRes.data : []
 
       setRestaurant(restaurantData)
-      setFoodItems(foodItemsData)
+      setFoodItems(Array.isArray(foodItemsData) ? foodItemsData : [])
 
       // Filter categories locally based on vendor type
-      const targetType = restaurantData.type === 'grocery_store' ? 'grocery' : 'food'
-      const filteredCategories = categoriesData.filter((cat: any) => cat.type === targetType)
+      const targetType = restaurantData?.type === 'grocery_store' ? 'grocery' : 'food'
+      const filteredCategories = categoriesData.filter((cat: { type: string }) => cat.type === targetType)
       setCategories(filteredCategories)
 
     } catch (error) {

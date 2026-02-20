@@ -8,7 +8,7 @@ import { CategoryType } from '../../src/types'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
-import { API_URL } from '../../src/lib/api'
+import { foodItemApi } from '../../src/lib/api'
 
 
 interface FoodCategory {
@@ -72,8 +72,8 @@ export default function FoodItemDetailScreen() {
   const fetchFoodItem = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/food-items/${itemId}`)
-      const data = await response.json()
+      const response = await foodItemApi.getById(Number(itemId))
+      const data = response.data
       setFoodItem(data)
 
       // If item has variants, select the first active variant by default

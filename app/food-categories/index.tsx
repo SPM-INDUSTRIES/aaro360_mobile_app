@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Theme } from '../../src/styles/theme'
 import { ProductCategory } from '../../src/types/product'
 import { Skeleton } from '../../src/components/SkeletonLoader'
+import { foodCategoryApi } from '../../src/lib/api'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -31,10 +32,9 @@ export default function FoodCategoriesScreen() {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      // Default to 'food' if no category provided, or map correctly
       const type = selectedCategory === ProductCategory.GROCERY ? 'grocery' : 'food'
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/food-categories?type=${type}`)
-      const data = await response.json()
+      const response = await foodCategoryApi.getAll({ type })
+      const data = response.data
       setCategories(Array.isArray(data) ? data.filter((cat: FoodCategory) => cat.isActive) : [])
     } catch (error) {
       console.error('Failed to fetch categories:', error)
