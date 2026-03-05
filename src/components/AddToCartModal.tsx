@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Theme } from '../styles/theme'
+import { resolveImageUrl } from '../utils/imageUrl'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -121,7 +122,7 @@ export default function AddToCartModal({
                         {/* Item Image */}
                         {item.imageUrl && (
                             <Image
-                                source={{ uri: item.imageUrl }}
+                                source={{ uri: resolveImageUrl(item.imageUrl) ?? item.imageUrl }}
                                 style={styles.itemImage}
                                 resizeMode="cover"
                             />

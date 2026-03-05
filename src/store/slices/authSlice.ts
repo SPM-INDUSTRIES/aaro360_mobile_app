@@ -50,6 +50,8 @@ export interface User {
   role: 'customer' | 'rider' | 'admin'
   profilePicture?: string
   isApproved: boolean
+  address?: string
+  city?: string
 }
 
 interface AuthState {

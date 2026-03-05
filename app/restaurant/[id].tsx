@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppDispatch } from '../../src/store/store'
@@ -250,7 +251,7 @@ export default function RestaurantDetailScreen() {
             <View style={styles.restaurantHeader}>
               {restaurant.coverImageUrl ? (
                 <Image
-                  source={{ uri: restaurant.coverImageUrl }}
+                  source={{ uri: resolveImageUrl(restaurant.coverImageUrl) ?? restaurant.coverImageUrl }}
                   style={styles.coverImage}
                   resizeMode="cover"
                 />
@@ -259,9 +260,9 @@ export default function RestaurantDetailScreen() {
               )}
               <View style={styles.restaurantInfo}>
                 <View style={styles.logoContainer}>
-                  {restaurant.logoUrl ? (
-                    <Image
-                      source={{ uri: restaurant.logoUrl }}
+{restaurant.logoUrl ? (
+                      <Image
+                          source={{ uri: resolveImageUrl(restaurant.logoUrl) ?? restaurant.logoUrl }}
                       style={styles.logo}
                     />
                   ) : (
@@ -377,7 +378,7 @@ export default function RestaurantDetailScreen() {
               >
                 {item.imageUrl ? (
                   <Image
-                    source={{ uri: item.imageUrl }}
+                    source={{ uri: resolveImageUrl(item.imageUrl) ?? item.imageUrl }}
                     style={styles.foodImage}
                   />
                 ) : (

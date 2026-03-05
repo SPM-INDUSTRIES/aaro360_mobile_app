@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native'
+import { resolveImageUrl } from '../src/utils/imageUrl'
 import { useState, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -22,6 +23,7 @@ export default function EditProfileScreen() {
     const [city, setCity] = useState((user as any)?.city || '')
     const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
     const { showAlert } = useAlert()
 
     const handlePickImage = async () => {
@@ -37,12 +39,21 @@ export default function EditProfileScreen() {
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.5,
-                base64: true,
+                base64: false,
             })
 
-            if (!result.canceled && result.assets[0].base64) {
-                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`
-                setProfilePicture(base64Image)
+            if (!result.canceled && result.assets[0].uri) {
+                setIsUploadingImage(true)
+                try {
+                    const url = await userApi.uploadProfilePicture(result.assets[0].uri)
+                    setProfilePicture(url)
+                    showAlert({ title: 'Success', message: 'Profile picture updated', type: 'success' })
+                } catch (uploadError) {
+                    console.error('Upload image error:', uploadError)
+                    showAlert({ title: 'Upload Failed', message: 'Failed to upload profile picture', type: 'error' })
+                } finally {
+                    setIsUploadingImage(false)
+                }
             }
         } catch (error) {
             console.error('Pick image error:', error)
@@ -100,19 +111,25 @@ export default function EditProfileScreen() {
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.avatarSection}>
-                    <TouchableOpacity onPress={handlePickImage} style={styles.avatarButton}>
+                    <TouchableOpacity onPress={handlePickImage} style={styles.avatarButton} disabled={isUploadingImage}>
                         {profilePicture ? (
-                            <Image source={{ uri: profilePicture }} style={styles.avatarImage} />
+                            <Image source={{ uri: resolveImageUrl(profilePicture) ?? profilePicture }} style={styles.avatarImage} />
                         ) : (
                             <View style={styles.avatarPlaceholder}>
                                 <Ionicons name="person" size={50} color="#CCC" />
                             </View>
                         )}
-                        <View style={styles.cameraIcon}>
-                            <Ionicons name="camera" size={20} color="#FFF" />
-                        </View>
+                        {isUploadingImage ? (
+                            <View style={styles.uploadingOverlay}>
+                                <ActivityIndicator color="#FFF" />
+                            </View>
+                        ) : (
+                            <View style={styles.cameraIcon}>
+                                <Ionicons name="camera" size={20} color="#FFF" />
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <Text style={styles.avatarHelp}>Tap to change profile picture</Text>
+                    <Text style={styles.avatarHelp}>{isUploadingImage ? 'Uploading...' : 'Tap to change profile picture'}</Text>
                 </View>
 
                 <View style={styles.form}>
@@ -249,6 +266,19 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: Theme.colors.primary,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         width: 34,
         height: 34,
         borderRadius: 17,

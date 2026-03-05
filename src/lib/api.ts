@@ -61,6 +61,18 @@ export const authApi = {
 export const userApi = {
   getProfile: (id: number) => api.get(`/users/${id}`),
   updateProfile: (id: number, data: any) => api.patch(`/users/${id}`, data),
+  uploadProfilePicture: async (fileUri: string): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', {
+      uri: fileUri,
+      type: 'image/jpeg',
+      name: 'profile.jpg',
+    } as any)
+    const res = await api.post('/upload?folder=profiles', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data.url
+  },
 }
 
 // Order endpoints

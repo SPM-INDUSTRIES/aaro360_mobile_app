@@ -2,6 +2,7 @@ import React from 'react'
 import { View, StyleSheet, ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 import { Ionicons } from '@expo/vector-icons'
+import { resolveImageUrl } from '../utils/imageUrl'
 
 interface ImageWithFallbackProps {
   source: string | { uri: string } | null | undefined
@@ -13,6 +14,7 @@ interface ImageWithFallbackProps {
 /**
  * Image component with fallback for invalid/empty URLs and base64 during migration.
  * Uses expo-image for built-in caching when URL is valid.
+ * Resolves localhost URLs to EXPO_PUBLIC_STORAGE_URL when set (for MinIO on different host).
  */
 export default function ImageWithFallback({
   source,
@@ -20,7 +22,8 @@ export default function ImageWithFallback({
   contentFit = 'cover',
   onError,
 }: ImageWithFallbackProps) {
-  const uri = typeof source === 'string' ? source : source?.uri
+  const rawUri = typeof source === 'string' ? source : source?.uri
+  const uri = resolveImageUrl(rawUri) ?? rawUri
   const isValidUrl = uri && (uri.startsWith('http://') || uri.startsWith('https://'))
   const isDataUri = uri && uri.startsWith('data:')
 

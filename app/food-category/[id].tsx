@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Skeleton } from '../../src/components/SkeletonLoader'
@@ -158,7 +159,7 @@ export default function FoodCategoryDetailScreen() {
             <View style={styles.categoryHeader}>
               {category.imageUrl ? (
                 <Image
-                  source={{ uri: category.imageUrl }}
+                  source={{ uri: resolveImageUrl(category.imageUrl) ?? category.imageUrl }}
                   style={styles.categoryImage}
                   resizeMode="cover"
                 />
@@ -220,7 +221,7 @@ export default function FoodCategoryDetailScreen() {
               >
                 {item.imageUrl ? (
                   <Image
-                    source={{ uri: item.imageUrl }}
+                    source={{ uri: resolveImageUrl(item.imageUrl) ?? item.imageUrl }}
                     style={styles.foodImage}
                   />
                 ) : (
