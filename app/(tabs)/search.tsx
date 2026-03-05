@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, SafeAreaView, Platform, StatusBar, Alert } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppDispatch } from '../../src/store/store'
@@ -384,7 +385,7 @@ export default function SearchScreen() {
                 <View style={styles.productImageContainer}>
                   {product.mainImage ? (
                     <Image
-                      source={{ uri: product.mainImage }}
+                      source={{ uri: resolveImageUrl(product.mainImage) ?? product.mainImage }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />

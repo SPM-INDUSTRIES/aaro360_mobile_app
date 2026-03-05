@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions, Linking, RefreshControl } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { CategoryType } from '../../src/types'
@@ -355,7 +356,7 @@ export default function HomeScreen() {
               />
               {offer.imageUrl ? (
                 <Image
-                  source={{ uri: offer.imageUrl }}
+                  source={{ uri: resolveImageUrl(offer.imageUrl) ?? offer.imageUrl }}
                   style={styles.offerImage}
                   resizeMode="cover"
                 />
@@ -424,7 +425,7 @@ export default function HomeScreen() {
               <View style={styles.foodCategoryImageContainer}>
                 {category.imageUrl ? (
                   <Image
-                    source={{ uri: category.imageUrl }}
+                    source={{ uri: resolveImageUrl(category.imageUrl) ?? category.imageUrl }}
                     style={styles.foodCategoryImage}
                     resizeMode="cover"
                   />
@@ -464,7 +465,7 @@ export default function HomeScreen() {
               onPress={() => router.push(`/restaurant/${brand.id}`)}
             >
               {brand.logoUrl ? (
-                <Image source={{ uri: brand.logoUrl }} style={styles.brandLogo} />
+                <Image source={{ uri: resolveImageUrl(brand.logoUrl) ?? brand.logoUrl }} style={styles.brandLogo} />
               ) : (
                 <View style={[styles.brandLogo, styles.placeholderImage]}>
                   <Text style={styles.brandPlaceholder}>{brand.name.charAt(0)}</Text>
@@ -506,7 +507,7 @@ export default function HomeScreen() {
                 }}
               >
                 {offer.mainImage ? (
-                  <Image source={{ uri: offer.mainImage }} style={styles.allOfferImage} resizeMode="cover" />
+                  <Image source={{ uri: resolveImageUrl(offer.mainImage) ?? offer.mainImage }} style={styles.allOfferImage} resizeMode="cover" />
                 ) : (
                   <View style={[styles.allOfferImage, styles.placeholderImage]}>
                     <Text style={styles.placeholderEmoji}>📦</Text>
@@ -579,6 +580,7 @@ export default function HomeScreen() {
             const imageUrl = hospital.coverImageUrl || hospital.logoUrl;
             // Handle both URL and base64 images
             const isValidImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('/'));
+            const resolvedUrl = imageUrl ? (resolveImageUrl(imageUrl) ?? imageUrl) : null;
 
             return (
               <TouchableOpacity
@@ -586,9 +588,9 @@ export default function HomeScreen() {
                 style={styles.hospitalCard}
                 onPress={() => hospital.phone && handleCallHospital(hospital.phone)}
               >
-                {isValidImage ? (
+                {isValidImage && resolvedUrl ? (
                   <Image
-                    source={{ uri: imageUrl }}
+                    source={{ uri: resolvedUrl }}
                     style={styles.hospitalImage}
                     resizeMode="cover"
                     onError={(error) => {
@@ -691,7 +693,7 @@ export default function HomeScreen() {
               activeOpacity={0.7}
             >
               {user?.profilePicture ? (
-                <Image source={{ uri: user.profilePicture }} style={styles.headerAvatar} />
+                <Image source={{ uri: resolveImageUrl(user.profilePicture) ?? user.profilePicture }} style={styles.headerAvatar} />
               ) : (
                 <View style={styles.headerAvatarPlaceholder}>
                   <Text style={styles.headerAvatarText}>

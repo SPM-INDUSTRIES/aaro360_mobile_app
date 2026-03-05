@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions } from 'react-native'
+import { resolveImageUrl } from '../src/utils/imageUrl'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -91,7 +92,7 @@ export default function SpecialOffersScreen() {
                             />
                             {offer.imageUrl ? (
                                 <Image
-                                    source={{ uri: offer.imageUrl }}
+                                    source={{ uri: resolveImageUrl(offer.imageUrl) ?? offer.imageUrl }}
                                     style={styles.offerImage}
                                     resizeMode="cover"
                                 />

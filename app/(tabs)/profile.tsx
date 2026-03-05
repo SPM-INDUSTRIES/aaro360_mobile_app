@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSelector } from 'react-redux'
@@ -86,7 +87,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             {user.profilePicture ? (
               <Image
-                source={{ uri: user.profilePicture }}
+                source={{ uri: resolveImageUrl(user.profilePicture) ?? user.profilePicture }}
                 style={styles.avatarImage}
               />
             ) : (
@@ -138,7 +139,11 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
+          >
             <Ionicons name="settings-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />

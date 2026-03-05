@@ -29,6 +29,8 @@ export interface User {
   phoneNumber?: string
   role: UserRole
   profilePicture?: string
+  address?: string
+  city?: string
 }
 
 export interface OrderItem {
