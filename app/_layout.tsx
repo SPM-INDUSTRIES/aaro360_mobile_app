@@ -87,6 +87,9 @@ function AppContent() {
         <Stack.Screen name="special-offers" options={{ headerShown: false }} />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="addresses" options={{ headerShown: false }} />
+        <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+        <Stack.Screen name="help-support" options={{ headerShown: false }} />
       </Stack>
     </View>
   )
