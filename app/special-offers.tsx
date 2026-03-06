@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions } from 'react-native'
+import { resolveImageUrl } from '../src/utils/imageUrl'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -84,14 +85,14 @@ export default function SpecialOffersScreen() {
                             }}
                         >
                             <LinearGradient
-                                colors={['#1E3A8A', '#2563EB']}
+                                colors={[Theme.colors.deepBlue, Theme.colors.blueText]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFill}
                             />
                             {offer.imageUrl ? (
                                 <Image
-                                    source={{ uri: offer.imageUrl }}
+                                    source={{ uri: resolveImageUrl(offer.imageUrl) ?? offer.imageUrl }}
                                     style={styles.offerImage}
                                     resizeMode="cover"
                                 />

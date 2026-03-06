@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Theme } from '../../src/styles/theme'
 import { ProductCategory } from '../../src/types/product'
 import { Skeleton } from '../../src/components/SkeletonLoader'
+import { foodCategoryApi } from '../../src/lib/api'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -31,10 +33,9 @@ export default function FoodCategoriesScreen() {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      // Default to 'food' if no category provided, or map correctly
       const type = selectedCategory === ProductCategory.GROCERY ? 'grocery' : 'food'
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories?type=${type}`)
-      const data = await response.json()
+      const response = await foodCategoryApi.getAll({ type })
+      const data = response.data
       setCategories(Array.isArray(data) ? data.filter((cat: FoodCategory) => cat.isActive) : [])
     } catch (error) {
       console.error('Failed to fetch categories:', error)
@@ -98,7 +99,7 @@ export default function FoodCategoriesScreen() {
                   <View style={styles.categoryImageContainer}>
                     {category.imageUrl ? (
                       <Image
-                        source={{ uri: category.imageUrl }}
+                        source={{ uri: resolveImageUrl(category.imageUrl) ?? category.imageUrl }}
                         style={styles.categoryImage}
                         resizeMode="cover"
                       />

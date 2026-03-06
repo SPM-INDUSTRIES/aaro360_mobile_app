@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
+import { foodCategoryApi, foodItemApi } from '../../src/lib/api'
 
 interface FoodCategory {
   id: number
@@ -40,6 +42,7 @@ export default function FoodCategoryDetailScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [priceError, setPriceError] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -49,15 +52,15 @@ export default function FoodCategoryDetailScreen() {
     try {
       setLoading(true)
       const [categoryRes, foodItemsRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-categories/${categoryId}`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/food-items/category/${categoryId}`),
+        foodCategoryApi.getById(Number(categoryId)),
+        foodItemApi.getByCategory(Number(categoryId)),
       ])
 
-      const categoryData = await categoryRes.json()
-      const foodItemsData = await foodItemsRes.json()
+      const categoryData = categoryRes.data
+      const foodItemsData = foodItemsRes.data
 
       setCategory(categoryData)
-      setFoodItems(foodItemsData)
+      setFoodItems(Array.isArray(foodItemsData) ? foodItemsData : [])
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
@@ -67,10 +70,34 @@ export default function FoodCategoryDetailScreen() {
 
   const filteredItems = foodItems.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesMinPrice = !minPrice || item.price >= parseFloat(minPrice)
-    const matchesMaxPrice = !maxPrice || item.price <= parseFloat(maxPrice)
+
+    const min = minPrice ? parseFloat(minPrice) : 0
+    const max = maxPrice ? parseFloat(maxPrice) : Infinity
+
+    // Basic numerical validation
+    if (minPrice && isNaN(min)) return false
+    if (maxPrice && isNaN(max)) return false
+
+    const matchesMinPrice = !minPrice || item.price >= min
+    const matchesMaxPrice = !maxPrice || item.price <= max
+
     return matchesSearch && matchesMinPrice && matchesMaxPrice && item.isAvailable
   })
+
+  // Add a side effect to check min/max logic and warn user
+  useEffect(() => {
+    if (minPrice && maxPrice) {
+      const min = parseFloat(minPrice)
+      const max = parseFloat(maxPrice)
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        setPriceError('Min should be less than Max')
+      } else {
+        setPriceError('')
+      }
+    } else {
+      setPriceError('')
+    }
+  }, [minPrice, maxPrice])
 
   const renderSkeleton = () => {
     return (
@@ -132,7 +159,7 @@ export default function FoodCategoryDetailScreen() {
             <View style={styles.categoryHeader}>
               {category.imageUrl ? (
                 <Image
-                  source={{ uri: category.imageUrl }}
+                  source={{ uri: resolveImageUrl(category.imageUrl) ?? category.imageUrl }}
                   style={styles.categoryImage}
                   resizeMode="cover"
                 />
@@ -178,6 +205,7 @@ export default function FoodCategoryDetailScreen() {
                 keyboardType="numeric"
               />
             </View>
+            {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
           </View>
 
           {/* Food Items */}
@@ -193,7 +221,7 @@ export default function FoodCategoryDetailScreen() {
               >
                 {item.imageUrl ? (
                   <Image
-                    source={{ uri: item.imageUrl }}
+                    source={{ uri: resolveImageUrl(item.imageUrl) ?? item.imageUrl }}
                     style={styles.foodImage}
                   />
                 ) : (
@@ -351,7 +379,7 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: 12,
-    color: '#0066FF',
+    color: '#124569',
     marginBottom: 4,
   },
   foodDescription: {
@@ -367,10 +395,10 @@ const styles = StyleSheet.create({
   foodPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0066FF',
+    color: '#124569',
   },
   addButton: {
-    backgroundColor: '#0066FF',
+    backgroundColor: '#124569',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -391,5 +419,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '600',
+    textAlign: 'right',
   },
 })

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, Dimensions } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -41,7 +42,7 @@ export default function AllRestaurantsScreen() {
     try {
       setLoading(true)
       const vendorType = category === ProductCategory.FOOD ? 'restaurant' : category === ProductCategory.GROCERY ? 'grocery_store' : 'all'
-      const url = `${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3000'}/vendors${vendorType !== 'all' ? `?type=${vendorType}` : ''}`
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/vendors${vendorType !== 'all' ? `?type=${vendorType}` : ''}`
       const response = await fetch(url)
       const data = await response.json()
       setRestaurants(Array.isArray(data) ? data : data.data || [])
@@ -124,7 +125,7 @@ export default function AllRestaurantsScreen() {
                 <View style={styles.cardCoverContainer}>
                   {restaurant.coverImageUrl ? (
                     <Image
-                      source={{ uri: restaurant.coverImageUrl }}
+                      source={{ uri: resolveImageUrl(restaurant.coverImageUrl) ?? restaurant.coverImageUrl }}
                       style={styles.coverImage}
                       resizeMode="cover"
                     />
@@ -141,7 +142,7 @@ export default function AllRestaurantsScreen() {
                   <View style={styles.logoContainer}>
                     {restaurant.logoUrl ? (
                       <Image
-                        source={{ uri: restaurant.logoUrl }}
+                        source={{ uri: resolveImageUrl(restaurant.logoUrl) ?? restaurant.logoUrl }}
                         style={styles.logo}
                       />
                     ) : (

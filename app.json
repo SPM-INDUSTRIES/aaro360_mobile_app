@@ -26,7 +26,7 @@
       "targetSdkVersion": 35,
       "adaptiveIcon": {
         "foregroundImage": "./assets/appicon/icon.png",
-        "backgroundColor": "#F59F0A"
+        "backgroundColor": "#fa6521"
       },
       "package": "com.aaro360.app",
       "config": {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppDispatch } from '../../src/store/store'
@@ -8,7 +9,7 @@ import { CategoryType } from '../../src/types'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
-import { API_URL } from '../../src/lib/api'
+import { foodItemApi } from '../../src/lib/api'
 
 
 interface FoodCategory {
@@ -72,8 +73,8 @@ export default function FoodItemDetailScreen() {
   const fetchFoodItem = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/food-items/${itemId}`)
-      const data = await response.json()
+      const response = await foodItemApi.getById(Number(itemId))
+      const data = response.data
       setFoodItem(data)
 
       // If item has variants, select the first active variant by default
@@ -239,7 +240,7 @@ export default function FoodItemDetailScreen() {
                 <View style={styles.imageContainer}>
                   {foodItem.imageUrl ? (
                     <Image
-                      source={{ uri: foodItem.imageUrl }}
+                      source={{ uri: resolveImageUrl(foodItem.imageUrl) ?? foodItem.imageUrl }}
                       style={styles.foodImage}
                       resizeMode="cover"
                     />
@@ -275,9 +276,9 @@ export default function FoodItemDetailScreen() {
                     onPress={() => router.push(`/restaurant/${foodItem.restaurant.id}`)}
                   >
                     <View style={styles.restaurantInfo}>
-                      {foodItem.restaurant.logoUrl && (
-                        <Image
-                          source={{ uri: foodItem.restaurant.logoUrl }}
+{foodItem.restaurant.logoUrl && (
+                          <Image
+                              source={{ uri: resolveImageUrl(foodItem.restaurant.logoUrl) ?? foodItem.restaurant.logoUrl }}
                           style={styles.restaurantLogo}
                         />
                       )}
@@ -360,7 +361,7 @@ export default function FoodItemDetailScreen() {
                             </Text>
                           </View>
                           {selectedAddons.includes(addon.id) && (
-                            <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                            <Ionicons name="checkmark-circle" size={24} color="#f27424" />
                           )}
                         </TouchableOpacity>
                       ))}
@@ -376,14 +377,14 @@ export default function FoodItemDetailScreen() {
                         onPress={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity === 1}
                       >
-                        <Ionicons name="remove" size={20} color={quantity === 1 ? "#CCC" : "#1E3A8A"} />
+                        <Ionicons name="remove" size={20} color={quantity === 1 ? "#CCC" : "#124569"} />
                       </TouchableOpacity>
                       <Text style={styles.quantityText}>{quantity}</Text>
                       <TouchableOpacity
                         style={styles.quantityButton}
                         onPress={() => setQuantity(quantity + 1)}
                       >
-                        <Ionicons name="add" size={20} color="#1E3A8A" />
+                        <Ionicons name="add" size={20} color="#124569" />
                       </TouchableOpacity>
                     </View>
                   </View>

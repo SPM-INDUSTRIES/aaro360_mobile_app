@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native'
+import { resolveImageUrl } from '../src/utils/imageUrl'
 import { useState, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -8,6 +9,7 @@ import { userApi } from '../src/lib/api'
 import { updateUser } from '../src/store/slices/authSlice'
 import { Theme } from '../src/styles/theme'
 import * as ImagePicker from 'expo-image-picker'
+import { useAlert } from '../src/context/AlertContext'
 
 export default function EditProfileScreen() {
     const router = useRouter()
@@ -21,12 +23,14 @@ export default function EditProfileScreen() {
     const [city, setCity] = useState((user as any)?.city || '')
     const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
+    const { showAlert } = useAlert()
 
     const handlePickImage = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!')
+                showAlert({ title: 'Permission Denied', message: 'Sorry, we need camera roll permissions to make this work!', type: 'warning' })
                 return
             }
 
@@ -35,22 +39,38 @@ export default function EditProfileScreen() {
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.5,
-                base64: true,
+                base64: false,
             })
 
-            if (!result.canceled && result.assets[0].base64) {
-                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`
-                setProfilePicture(base64Image)
+            if (!result.canceled && result.assets[0].uri) {
+                setIsUploadingImage(true)
+                try {
+                    const url = await userApi.uploadProfilePicture(result.assets[0].uri)
+                    setProfilePicture(url)
+                    showAlert({ title: 'Success', message: 'Profile picture updated', type: 'success' })
+                } catch (uploadError) {
+                    console.error('Upload image error:', uploadError)
+                    showAlert({ title: 'Upload Failed', message: 'Failed to upload profile picture', type: 'error' })
+                } finally {
+                    setIsUploadingImage(false)
+                }
             }
         } catch (error) {
             console.error('Pick image error:', error)
-            Alert.alert('Error', 'Failed to pick image')
+            showAlert({ title: 'Error', message: 'Failed to pick image', type: 'error' })
         }
     }
 
     const handleSave = async () => {
         if (!firstName.trim() || !lastName.trim()) {
-            Alert.alert('Error', 'First and last name are required')
+            showAlert({ title: 'Error', message: 'First and last name are required', type: 'warning' })
+            return
+        }
+
+        // Phone number validation
+        const phoneRegex = /^0[0-9]{9}$/
+        if (phoneNumber && !phoneRegex.test(phoneNumber.trim())) {
+            showAlert({ title: 'Invalid Phone Number', message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)', type: 'warning' })
             return
         }
 
@@ -70,12 +90,10 @@ export default function EditProfileScreen() {
             // Update local state
             dispatch(updateUser(updateData))
 
-            Alert.alert('Success', 'Profile updated successfully', [
-                { text: 'OK', onPress: () => router.back() }
-            ])
+            showAlert({ title: 'Success', message: 'Profile updated successfully', type: 'success', onConfirm: () => router.back() })
         } catch (error: any) {
             console.error('Update profile error:', error)
-            Alert.alert('Error', error.response?.data?.message || 'Failed to update profile')
+            showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to update profile', type: 'error' })
         } finally {
             setIsSubmitting(false)
         }
@@ -93,19 +111,25 @@ export default function EditProfileScreen() {
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.avatarSection}>
-                    <TouchableOpacity onPress={handlePickImage} style={styles.avatarButton}>
+                    <TouchableOpacity onPress={handlePickImage} style={styles.avatarButton} disabled={isUploadingImage}>
                         {profilePicture ? (
-                            <Image source={{ uri: profilePicture }} style={styles.avatarImage} />
+                            <Image source={{ uri: resolveImageUrl(profilePicture) ?? profilePicture }} style={styles.avatarImage} />
                         ) : (
                             <View style={styles.avatarPlaceholder}>
                                 <Ionicons name="person" size={50} color="#CCC" />
                             </View>
                         )}
-                        <View style={styles.cameraIcon}>
-                            <Ionicons name="camera" size={20} color="#FFF" />
-                        </View>
+                        {isUploadingImage ? (
+                            <View style={styles.uploadingOverlay}>
+                                <ActivityIndicator color="#FFF" />
+                            </View>
+                        ) : (
+                            <View style={styles.cameraIcon}>
+                                <Ionicons name="camera" size={20} color="#FFF" />
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <Text style={styles.avatarHelp}>Tap to change profile picture</Text>
+                    <Text style={styles.avatarHelp}>{isUploadingImage ? 'Uploading...' : 'Tap to change profile picture'}</Text>
                 </View>
 
                 <View style={styles.form}>
@@ -242,6 +266,19 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: Theme.colors.primary,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#FFF',
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         width: 34,
         height: 34,
         borderRadius: 17,

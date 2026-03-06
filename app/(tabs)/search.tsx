@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, SafeAreaView, Platform, StatusBar, Alert } from 'react-native'
+import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppDispatch } from '../../src/store/store'
 import FilterModal from '../../src/components/search/FilterModal'
 import { productApi } from '../../src/lib/productApi'
+import { foodItemApi } from '../../src/lib/api'
 import { Product, ProductCategory } from '../../src/types/product'
 import { addItemToCart } from '../../src/store/slices/cartSlice'
 import { CategoryType } from '../../src/types'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
-import { API_URL } from '../../src/lib/api'
 
 
 export default function SearchScreen() {
@@ -133,8 +134,8 @@ export default function SearchScreen() {
         if (categoryType === ProductCategory.FOOD || categoryType === ProductCategory.GROCERY) {
           try {
             // Fetch food items from food_items table
-            const foodItemsResponse = await fetch(`${API_URL}/food-items`)
-            const foodItemsData = await foodItemsResponse.json()
+            const foodItemsRes = await foodItemApi.getAll()
+            const foodItemsData = foodItemsRes.data
             const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
             // Filter by category type
@@ -226,8 +227,8 @@ export default function SearchScreen() {
 
       // Also search in food_items table for food and grocery items
       try {
-        const foodItemsResponse = await fetch(`${API_URL}/food-items`)
-        const foodItemsData = await foodItemsResponse.json()
+        const foodItemsRes = await foodItemApi.getAll()
+        const foodItemsData = foodItemsRes.data
         const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
 
         // Filter by search query (case-insensitive search in name and description)
@@ -350,7 +351,7 @@ export default function SearchScreen() {
             style={styles.filterButton}
             onPress={() => setShowFilters(true)}
           >
-            <Ionicons name="options" size={24} color="#F59E0B" />
+            <Ionicons name="options" size={24} color="#f27424" />
           </TouchableOpacity>
         </View>
       </View>
@@ -359,7 +360,7 @@ export default function SearchScreen() {
       <ScrollView style={styles.results}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F59E0B" />
+            <ActivityIndicator size="large" color="#f27424" />
             <Text style={styles.loadingText}>Searching...</Text>
           </View>
         ) : products.length > 0 ? (
@@ -373,20 +374,18 @@ export default function SearchScreen() {
                 style={styles.productItem}
                 activeOpacity={0.7}
                 onPress={() => {
-                  // Check if it's a food item (ID starts with "food-")
                   if (typeof product.id === 'string' && product.id.startsWith('food-')) {
                     const foodItemId = product.id.replace('food-', '')
                     router.push(`/food-item/${foodItemId}`)
                   } else {
-                    // TODO: Navigate to product detail page when created
-                    console.log('Product selected:', product.name)
+                    router.push(`/product/${product.id}`)
                   }
                 }}
               >
                 <View style={styles.productImageContainer}>
                   {product.mainImage ? (
                     <Image
-                      source={{ uri: product.mainImage }}
+                      source={{ uri: resolveImageUrl(product.mainImage) ?? product.mainImage }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />
@@ -482,7 +481,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -630,7 +629,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E3A8A',
+    color: '#124569',
   },
   productOriginalPrice: {
     fontSize: 14,
@@ -639,13 +638,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   addButton: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#f27424',
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#F59E0B',
+    shadowColor: '#f27424',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

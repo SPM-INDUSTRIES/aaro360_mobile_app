@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Theme } from '../src/styles/theme'
+
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { Provider } from 'react-redux'
@@ -59,7 +61,7 @@ function AppContent() {
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F59E0B" />
+        <ActivityIndicator size="large" color={Theme.colors.primary} />
       </View>
     )
   }
@@ -69,9 +71,9 @@ function AppContent() {
       <Stack
         initialRouteName="login"
         screenOptions={{
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: '#1E3A8A',
-          headerTitleStyle: { fontWeight: 'bold', color: '#1E3A8A' },
+          headerStyle: { backgroundColor: Theme.colors.white },
+          headerTintColor: Theme.colors.deepBlue,
+          headerTitleStyle: { fontWeight: 'bold', color: Theme.colors.deepBlue },
           headerShadowVisible: false,
         }}
       >
@@ -84,15 +86,20 @@ function AppContent() {
         <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
         <Stack.Screen name="special-offers" options={{ headerShown: false }} />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack>
     </View>
   )
 }
 
+import { AlertProvider } from '../src/context/AlertContext'
+
 export default function RootLayout() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <AlertProvider>
+        <AppContent />
+      </AlertProvider>
     </Provider>
   )
 }
@@ -102,6 +109,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.white,
   },
 })
