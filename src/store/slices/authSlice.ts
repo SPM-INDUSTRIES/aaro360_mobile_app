@@ -41,6 +41,16 @@ const getErrorMessage = (error: any): string => {
   return error.message || 'An unexpected error occurred. Please try again.'
 }
 
+export type AddressLabel = 'Home' | 'Work' | 'Other'
+
+export interface UserAddress {
+  id: string
+  label: AddressLabel
+  street: string
+  city: string
+  isDefault: boolean
+}
+
 export interface User {
   id: number
   email?: string | null
@@ -52,6 +62,7 @@ export interface User {
   isApproved: boolean
   address?: string
   city?: string
+  addresses?: UserAddress[]
 }
 
 interface AuthState {

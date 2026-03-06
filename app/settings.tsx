@@ -1,287 +1,294 @@
+import { useEffect, useMemo, useState } from 'react'
+import axios from 'axios'
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Image,
-  Alert,
+  View,
 } from 'react-native'
-import { useState, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState } from '../src/store/store'
-import { userApi } from '../src/lib/api'
-import { updateUser } from '../src/store/slices/authSlice'
+import Constants from 'expo-constants'
 import { Theme } from '../src/styles/theme'
-import * as ImagePicker from 'expo-image-picker'
-import * as Constants from 'expo-constants'
+import { authApi } from '../src/lib/api'
 import { useAlert } from '../src/context/AlertContext'
-import { resolveImageUrl } from '../src/utils/imageUrl'
+
+const extractErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.data?.message) {
+      return error.response.data.message
+    }
+    return error.message
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'An unexpected error occurred. Please try again.'
+}
+
+type ForgotStep = 'email' | 'otp' | 'newPassword'
 
 export default function SettingsScreen() {
   const router = useRouter()
-  const dispatch = useDispatch()
-  const { user } = useSelector((state: RootState) => state.auth)
   const { showAlert } = useAlert()
 
-  const [firstName, setFirstName] = useState(user?.firstName || '')
-  const [lastName, setLastName] = useState(user?.lastName || '')
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '')
-  const [address, setAddress] = useState((user as any)?.address || '')
-  const [city, setCity] = useState((user as any)?.city || '')
-  const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [forgotStep, setForgotStep] = useState<ForgotStep>('email')
+  const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [resendCountdown, setResendCountdown] = useState(0)
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'
   const appVersion = Constants.default.expoConfig?.version || '1.0.0'
 
-  const handlePickImage = async () => {
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    if (resendCountdown > 0) {
+      interval = setInterval(() => setResendCountdown((prev) => prev - 1), 1000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [resendCountdown])
+
+  const resetModalState = () => {
+    setForgotStep('email')
+    setEmail('')
+    setOtp('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setResendCountdown(0)
+    setShowPassword(false)
+  }
+
+  const handleSendResetCode = async () => {
+    if (!email.trim()) {
+      showAlert({ title: 'Email required', message: 'Please enter your registered email', type: 'warning' })
+      return
+    }
+
+    setIsLoading(true)
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (status !== 'granted') {
-        showAlert({
-          title: 'Permission Denied',
-          message: 'Sorry, we need camera roll permissions to make this work!',
-          type: 'warning',
-        })
-        return
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-        base64: false,
-      })
-
-      if (!result.canceled && result.assets[0].uri) {
-        setIsUploadingImage(true)
-        try {
-          const url = await userApi.uploadProfilePicture(result.assets[0].uri)
-          setProfilePicture(url)
-          showAlert({ title: 'Success', message: 'Profile picture updated', type: 'success' })
-        } catch (uploadError) {
-          console.error('Upload image error:', uploadError)
-          showAlert({
-            title: 'Upload Failed',
-            message: 'Failed to upload profile picture',
-            type: 'error',
-          })
-        } finally {
-          setIsUploadingImage(false)
-        }
-      }
-    } catch (error) {
-      console.error('Pick image error:', error)
-      showAlert({ title: 'Error', message: 'Failed to pick image', type: 'error' })
+      await authApi.forgotPassword(email.trim())
+      setForgotStep('otp')
+      setResendCountdown(60)
+      showAlert({ title: 'Code sent', message: 'Check your email for the 6-digit code', type: 'success' })
+    } catch (error: unknown) {
+      showAlert({ title: 'Failed', message: extractErrorMessage(error), type: 'error' })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      showAlert({
-        title: 'Error',
-        message: 'First and last name are required',
-        type: 'warning',
-      })
+  const handleResendCode = async () => {
+    if (resendCountdown > 0) {
+      showAlert({ title: 'Please wait', message: `You can resend in ${resendCountdown}s`, type: 'info' })
+      return
+    }
+    await handleSendResetCode()
+  }
+
+  const handleVerifyOtp = () => {
+    if (otp.length !== 6) {
+      showAlert({ title: 'Invalid code', message: 'Enter the 6-digit code sent to your email', type: 'warning' })
+      return
+    }
+    setForgotStep('newPassword')
+  }
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 6) {
+      showAlert({ title: 'Weak password', message: 'Password must be at least 6 characters long', type: 'warning' })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      showAlert({ title: 'Mismatch', message: 'Passwords do not match', type: 'warning' })
       return
     }
 
-    const phoneRegex = /^0[0-9]{9}$/
-    if (phoneNumber && !phoneRegex.test(phoneNumber.trim())) {
-      showAlert({
-        title: 'Invalid Phone Number',
-        message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)',
-        type: 'warning',
-      })
-      return
-    }
-
+    setIsLoading(true)
     try {
-      setIsSubmitting(true)
-      const updateData = {
-        firstName,
-        lastName,
-        phoneNumber,
-        address,
-        city,
-        profilePicture,
-      }
-
-      await userApi.updateProfile(user!.id, updateData)
-      dispatch(updateUser(updateData))
-
+      await authApi.resetPassword({ email: email.trim(), otp, newPassword })
       showAlert({
         title: 'Success',
-        message: 'Settings updated successfully',
+        message: 'Password has been reset. Please login with your new password.',
         type: 'success',
       })
-    } catch (error: any) {
-      console.error('Update profile error:', error)
-      showAlert({
-        title: 'Error',
-        message: error.response?.data?.message || 'Failed to update settings',
-        type: 'error',
-      })
+      setShowResetModal(false)
+      resetModalState()
+    } catch (error: unknown) {
+      showAlert({ title: 'Error', message: extractErrorMessage(error), type: 'error' })
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
+  }
+
+  const modalButtonLabel = useMemo(() => {
+    if (forgotStep === 'email') return 'Send code'
+    if (forgotStep === 'otp') return 'Verify code'
+    return 'Save password'
+  }, [forgotStep])
+
+  const handleModalAction = () => {
+    if (forgotStep === 'email') return handleSendResetCode()
+    if (forgotStep === 'otp') return handleVerifyOtp()
+    return handleResetPassword()
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Profile Picture Section */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Picture</Text>
-          <View style={styles.sectionContent}>
-            <View style={styles.avatarSection}>
-              <TouchableOpacity
-                onPress={handlePickImage}
-                style={styles.avatarButton}
-                disabled={isUploadingImage}
-              >
-                {profilePicture ? (
-                  <Image source={{ uri: resolveImageUrl(profilePicture) ?? profilePicture }} style={styles.avatarImage} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={50} color="#CCC" />
-                  </View>
-                )}
-                {isUploadingImage ? (
-                  <View style={styles.uploadingOverlay}>
-                    <ActivityIndicator color="#FFF" />
-                  </View>
-                ) : (
-                  <View style={styles.cameraIcon}>
-                    <Ionicons name="camera" size={20} color="#FFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
-              <Text style={styles.avatarHelp}>
-                {isUploadingImage ? 'Uploading...' : 'Tap to change photo'}
-              </Text>
+          <Text style={styles.sectionTitle}>Security</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              resetModalState()
+              setShowResetModal(true)
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={Theme.colors.primary} />
             </View>
-          </View>
+            <View style={styles.menuTextWrapper}>
+              <Text style={styles.menuText}>Reset Password</Text>
+              <Text style={styles.menuSubtitle}>Use email + OTP verification to update your password</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
         </View>
 
-        {/* Personal Information Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <View style={styles.sectionContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name</Text>
-              <TextInput
-                style={styles.input}
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="First Name"
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput
-                style={styles.input}
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Last Name"
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email (Cannot be changed)</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={user?.email || ''}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Phone Number (e.g., 0712345678)"
-                keyboardType="phone-pad"
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Delivery Address</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Street Address"
-                multiline
-                numberOfLines={3}
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>City</Text>
-              <TextInput
-                style={styles.input}
-                value={city}
-                onChangeText={setCity}
-                placeholder="City"
-                editable={!isSubmitting}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* App Information Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Information</Text>
-          <View style={styles.sectionContent}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>App Version</Text>
-              <Text style={styles.infoValue}>{appVersion}</Text>
-            </View>
-            <View style={[styles.infoRow, styles.lastInfoRow]}>
-              <Text style={styles.infoLabel}>API Server</Text>
-              <Text style={styles.infoValue} numberOfLines={1}>
-                {API_URL}
-              </Text>
-            </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>App Version</Text>
+            <Text style={styles.infoValue}>{appVersion}</Text>
           </View>
         </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, isSubmitting && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save All Changes</Text>
-          )}
-        </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showResetModal} animationType="slide" transparent statusBarTranslucent>
+        <KeyboardAvoidingView
+          style={styles.modalWrapper}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Password</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowResetModal(false)
+                  resetModalState()
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              {forgotStep === 'email' && 'Enter the email associated with your account.'}
+              {forgotStep === 'otp' && 'Enter the 6-digit code sent to your email.'}
+              {forgotStep === 'newPassword' && 'Choose a new password and confirm it.'}
+            </Text>
+
+            {forgotStep === 'email' && (
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            )}
+
+            {forgotStep === 'otp' && (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="6-digit code"
+                  placeholderTextColor="#999"
+                  value={otp}
+                  onChangeText={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
+                  keyboardType="numeric"
+                  maxLength={6}
+                />
+                <TouchableOpacity onPress={handleResendCode} disabled={isLoading}>
+                  <Text style={styles.resendText}>
+                    {resendCountdown > 0 ? `Resend available in ${resendCountdown}s` : 'Resend code'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {forgotStep === 'newPassword' && (
+              <>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="New password"
+                    placeholderTextColor="#999"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color={Theme.colors.textGray}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm password"
+                  placeholderTextColor="#999"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+              </>
+            )}
+
+            <TouchableOpacity
+              style={[styles.modalButton, isLoading && styles.disabledButton]}
+              onPress={handleModalAction}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.modalButtonText}>{modalButtonLabel}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   )
 }
@@ -289,21 +296,26 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: Theme.colors.backgroundLight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 15,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 52,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    backgroundColor: Theme.colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Theme.colors.border,
   },
   backButton: {
-    padding: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -315,100 +327,49 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   section: {
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+    backgroundColor: Theme.colors.white,
     borderRadius: 12,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 16,
+    shadowColor: Theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: Theme.colors.deepBlue,
-    paddingHorizontal: 16,
-    paddingTop: 16,
     marginBottom: 12,
   },
-  sectionContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  avatarSection: {
+  menuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
-  avatarButton: {
-    position: 'relative',
-  },
-  avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F5F5F5',
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#EDF7FF',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
-  cameraIcon: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: Theme.colors.primary,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
+  menuTextWrapper: {
+    flex: 1,
+    marginLeft: 12,
   },
-  uploadingOverlay: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-  },
-  avatarHelp: {
-    marginTop: 10,
-    fontSize: 12,
-    color: '#666',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
+  menuText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: Theme.colors.textDark,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#000',
-  },
-  disabledInput: {
-    backgroundColor: '#F9F9F9',
-    color: '#999',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
+  menuSubtitle: {
+    fontSize: 12,
+    color: Theme.colors.textGray,
   },
   infoRow: {
     flexDirection: 'row',
@@ -418,35 +379,82 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  lastInfoRow: {
-    borderBottomWidth: 0,
-  },
   infoLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: Theme.colors.textGray,
   },
   infoValue: {
     fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: Theme.colors.textDark,
+  },
+  modalWrapper: {
     flex: 1,
-    textAlign: 'right',
-    marginLeft: 10,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  saveButton: {
-    backgroundColor: Theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
+  modalContainer: {
+    backgroundColor: Theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'space-between',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: Theme.colors.deepBlue,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: Theme.colors.textGray,
+  },
+  input: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: '#F9FAFB',
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resendText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: Theme.colors.primary,
+    fontWeight: '600',
+  },
+  modalButton: {
+    marginTop: 24,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.colors.white,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
 })
