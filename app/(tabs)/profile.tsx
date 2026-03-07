@@ -118,15 +118,6 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-
-
-          {(user as any).address && (
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={20} color="#666" />
-              <Text style={styles.infoText}>{(user as any).address}</Text>
-            </View>
-          )}
-
           <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
             <Ionicons name="location-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Addresses</Text>

@@ -88,3 +88,8 @@ local.properties
 # md
 *.md
 bun.lock
+
+# avoid agent files
+.cursor/
+.claude/
+.claude-flow/
