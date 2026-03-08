@@ -1,28 +1,40 @@
 import { useEffect } from 'react'
-import { useRouter, useRootNavigationState } from 'expo-router'
+import { useRouter, useRootNavigationState, useSegments } from 'expo-router'
 import { useSelector } from 'react-redux'
 import { RootState } from '../src/store/store'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { Theme } from '../src/styles/theme'
 
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/vendor', '/food-item', '/category']
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'))
+}
 
 export default function AuthScreen() {
   const router = useRouter()
   const navigationState = useRootNavigationState()
+  const segments = useSegments()
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
 
   useEffect(() => {
-    // Wait for navigation state to be ready before attempting to navigate
     if (!navigationState?.key) {
       return
     }
 
+    const currentPath = '/' + segments.join('/')
+    const isPublic = isPublicRoute(currentPath)
+
     if (isAuthenticated) {
-      router.replace('/(tabs)/')
+      if (currentPath === '/login' || currentPath === '/') {
+        router.replace('/(tabs)/')
+      }
     } else {
-      router.replace('/login')
+      if (!isPublic && currentPath !== '/login') {
+        router.replace('/login')
+      }
     }
-  }, [isAuthenticated, navigationState?.key])
+  }, [isAuthenticated, navigationState?.key, segments])
 
   return (
     <View style={styles.container}>

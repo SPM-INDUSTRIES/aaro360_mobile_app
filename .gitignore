@@ -93,3 +93,8 @@ bun.lock
 .cursor/
 .claude/
 .claude-flow/
+
+# Firebase - DO NOT COMMIT
+google-services.json
+GoogleService-Info.plist
+firebase-config.json

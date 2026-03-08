@@ -16,7 +16,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aaro360.app"
+      "bundleIdentifier": "com.aaro360.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Aaro360 uses your photo library to let you set a profile picture for your account."
+      }
     },
     "android": {
       "minSdkVersion": 24,

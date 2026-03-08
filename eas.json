@@ -21,6 +21,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      },
       "android": {
         "buildType": "apk"
       }

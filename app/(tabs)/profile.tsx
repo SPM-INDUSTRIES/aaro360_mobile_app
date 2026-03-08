@@ -102,8 +102,8 @@ export default function ProfileScreen() {
             {user.firstName} {user.lastName}
           </Text>
           <Text style={styles.email}>{user.email}</Text>
-          {(user as any).phoneNumber && (
-            <Text style={styles.phoneText}>{(user as any).phoneNumber}</Text>
+          {user.phoneNumber && (
+            <Text style={styles.phoneText}>{user.phoneNumber}</Text>
           )}
         </View>
 
@@ -118,13 +118,21 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/addresses')}
+            activeOpacity={0.7}
+          >
             <Ionicons name="location-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Addresses</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/payment-methods')}
+            activeOpacity={0.7}
+          >
             <Ionicons name="card-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Payment Methods</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -140,7 +148,11 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/help-support')}
+            activeOpacity={0.7}
+          >
             <Ionicons name="help-circle-outline" size={24} color="#000" />
             <Text style={styles.menuText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />

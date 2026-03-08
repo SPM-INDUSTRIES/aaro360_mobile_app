@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions, Linking, RefreshControl } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Dimensions, Linking, RefreshControl, FlatList } from 'react-native'
 import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
@@ -57,10 +57,12 @@ export default function HomeScreen() {
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const offersScrollRef = useRef<ScrollView>(null)
   const [currentOfferIndex, setCurrentOfferIndex] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+
+  const CATEGORY_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+  const OFFERS_CACHE_TTL = 10 * 10 * 1000 // 10 minutes
 
   useEffect(() => {
     fetchInitialData()
@@ -77,12 +79,11 @@ export default function HomeScreen() {
     if (selectedCategory) {
       fetchCategoryData(selectedCategory)
     }
-  }, [selectedCategory, currentPage])
+  }, [selectedCategory])
 
   const fetchInitialData = async () => {
     try {
       setLoading(true)
-      // Fetch all active offers to ensure we have data to display
       const offers = await offerApi.getActive()
       setSpecialOffers(offers || [])
     } catch (error) {
@@ -95,12 +96,11 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true)
+    setCurrentPage(1)
     try {
-      // Refresh offers
       const offers = await offerApi.getActive()
       setSpecialOffers(offers || [])
 
-      // Refresh category data if category is selected
       if (selectedCategory) {
         await fetchCategoryData(selectedCategory)
       }
@@ -116,7 +116,6 @@ export default function HomeScreen() {
       setLoading(true)
 
       if (category === ProductCategory.ECHANELLING) {
-        // For medicine/Pharmacy, fetch hospitals/pharmacies
         const res = await vendorApi.getAll({ type: 'pharmacy' })
         const vendors = res.data
         setHospitals(Array.isArray(vendors) ? vendors : vendors?.data || [])
@@ -125,15 +124,12 @@ export default function HomeScreen() {
         setBestOffers([])
         setFoodCategories([])
       } else if (category === ProductCategory.FOOD || category === ProductCategory.GROCERY) {
-        // For Food and Grocery
         const vendorType = category === ProductCategory.FOOD ? 'restaurant' : 'grocery_store'
 
-        // Fetch vendors (restaurants/stores) for Trending Brands
         const vendorsRes = await vendorApi.getAll({ type: vendorType })
         const vendorsData = vendorsRes.data
         setTrendingBrands(Array.isArray(vendorsData) ? vendorsData : vendorsData?.data || [])
 
-        // Fetch food categories if Food is selected
         if (category === ProductCategory.FOOD) {
           const categoriesRes = await foodCategoryApi.getAll({ type: 'food' })
           const categoriesData = categoriesRes.data
@@ -142,23 +138,16 @@ export default function HomeScreen() {
           setFoodCategories([])
         }
 
-        // Fetch products for All Offers
         let allProducts: Product[] = []
 
-        // For both Food and Grocery, fetch food_items from food_items table
         try {
-          // Fetch food items from food_items table
           const foodItemsRes = await foodItemApi.getAll()
           const foodItemsData = foodItemsRes.data
           const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
-
-          // Filter by category type
           const categoryType = category === ProductCategory.FOOD ? 'food' : 'grocery'
           const filteredItems = foodItems.filter((item: any) =>
             item.category?.type === categoryType && item.isAvailable
           )
-
-          // Convert food items to product format
           const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
             id: `food-${item.id}`,
             name: item.name,
@@ -184,18 +173,16 @@ export default function HomeScreen() {
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
           }))
-
           allProducts = [...itemsAsProducts]
         } catch (error) {
           console.error(`Failed to fetch ${category} items:`, error)
         }
 
-        // Also fetch from products table
         try {
           const productsResponse = await productApi.getAll({
             category: category as ProductCategory,
             page: 1,
-            limit: 100, // Get more to combine with food items
+            limit: 100,
           })
           const productsFromTable = productsResponse.data || []
           allProducts = [...allProducts, ...productsFromTable]
@@ -203,44 +190,17 @@ export default function HomeScreen() {
           console.error('Failed to fetch products:', error)
         }
 
-        // Remove duplicates based on id
         const uniqueProducts = allProducts.filter((product, index, self) =>
           index === self.findIndex((p) => p.id === product.id)
         )
 
-        // Apply sorting by order count (descending)
         const sortedProducts = uniqueProducts.sort((a, b) =>
           (b.orderCount || 0) - (a.orderCount || 0)
         )
 
-        // Apply pagination
-        const startIndex = (currentPage - 1) * 10
-        const endIndex = startIndex + 10
-        const paginatedProducts = sortedProducts.slice(startIndex, endIndex)
-
-        setAllOffers(paginatedProducts)
-        setTotalPages(Math.ceil(uniqueProducts.length / 10))
-
-        // Fetch best offers (featured products)
-        try {
-          const featured = await productApi.getFeatured(6)
-          setBestOffers(featured.filter(p => p.category === category))
-        } catch (error) {
-          console.error('Failed to fetch featured products:', error)
-          setBestOffers([])
-        }
-
-        setHospitals([])
-      } else if (category === ProductCategory.MEDICINE) {
-        // Placeholder for Medicine/Pharmacy - No data yet or different logic
-        setHospitals([])
-        setTrendingBrands([])
-        setAllOffers([])
-        setBestOffers([])
-        setFoodCategories([])
+        setAllOffers(sortedProducts)
+        setBestOffers(sortedProducts.slice(0, 5))
       } else {
-        // Handle other categories (eChanneling, Vehicle) - No data yet
-        setHospitals([])
         setTrendingBrands([])
         setAllOffers([])
         setBestOffers([])
@@ -248,6 +208,11 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error('Failed to fetch category data:', error)
+      setTrendingBrands([])
+      setAllOffers([])
+      setBestOffers([])
+      setHospitals([])
+      setFoodCategories([])
     } finally {
       setLoading(false)
     }
@@ -490,9 +455,9 @@ export default function HomeScreen() {
         <Text style={[styles.sectionTitle, { marginBottom: Theme.spacing.md }]}>Top Orders</Text>
         {loading ? (
           <ActivityIndicator size="large" color={Theme.colors.primary} style={styles.loader} />
-        ) : allOffers.length > 0 ? (
+        ) : bestOffers.length > 0 ? (
           <>
-            {allOffers.map((offer) => (
+            {bestOffers.slice(0, 10).map((offer) => (
               <TouchableOpacity
                 key={offer.id}
                 style={styles.allOfferCard}
@@ -536,27 +501,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             ))}
-            {totalPages > 1 && (
-              <View style={styles.pagination}>
-                <TouchableOpacity
-                  style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-                  onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <Text style={styles.paginationButtonText}>Previous</Text>
-                </TouchableOpacity>
-                <Text style={styles.paginationText}>
-                  Page {currentPage} of {totalPages}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-                  onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <Text style={styles.paginationButtonText}>Next</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </>
         ) : (
           <View style={styles.emptyContainer}>

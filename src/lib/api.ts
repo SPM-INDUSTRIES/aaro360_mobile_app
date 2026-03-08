@@ -94,13 +94,13 @@ export const searchApi = {
 
 // Vendor endpoints (use baseApi for public data - no auth required)
 export const vendorApi = {
-  getAll: (filters?: { type?: string }) => baseApi.get('/vendors', { params: filters }),
+  getAll: (filters?: { type?: string; page?: number; limit?: number }) => baseApi.get('/vendors', { params: filters }),
   getById: (id: string) => baseApi.get(`/vendors/${id}`),
 }
 
 // Food item endpoints
 export const foodItemApi = {
-  getAll: () => baseApi.get('/food-items'),
+  getAll: (filters?: { page?: number; limit?: number }) => baseApi.get('/food-items', { params: filters }),
   getById: (id: number) => baseApi.get(`/food-items/${id}`),
   getByRestaurant: (restaurantId: string) => baseApi.get(`/food-items/restaurant/${restaurantId}`),
   getByCategory: (categoryId: number) => baseApi.get(`/food-items/category/${categoryId}`),

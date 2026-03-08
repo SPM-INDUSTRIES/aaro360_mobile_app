@@ -9,7 +9,7 @@
 const MINIO_BUCKET = 'aaro360-images'
 
 function isMinioUrl(url: string): boolean {
-  return url.includes('storage.aaroeats.lk') || url.includes(MINIO_BUCKET)
+  return url.includes('https://027e9d60504f67c1cace1792d7fd5175.r2.cloudflarestorage.com') || url.includes(MINIO_BUCKET)
 }
 
 function toProxyUrl(url: string): string | null {
