@@ -40,6 +40,17 @@ export const initializeInterceptors = async () => {
   }
 }
 
+// Auth types
+export interface ResetPasswordPayload {
+  email: string
+  otp: string
+  newPassword: string
+}
+
+export interface ResetPasswordResponse {
+  message: string
+}
+
 // Auth endpoints - use baseApi to avoid interceptor side effects during login/refresh
 export const authApi = {
   googleLogin: (data: { idToken: string }) => baseApi.post('/auth/google-login', data),
@@ -52,7 +63,7 @@ export const authApi = {
   sendOtp: (data: { email: string }) => baseApi.post('/auth/send-otp', data),
   verifyOtp: (data: { email: string; otp: string }) => baseApi.post('/auth/verify-otp', data),
   forgotPassword: (email: string) => baseApi.post('/auth/forgot-password', { email }),
-  resetPassword: (data: any) => baseApi.post('/auth/reset-password', data),
+  resetPassword: (data: ResetPasswordPayload) => baseApi.post<ResetPasswordResponse>('/auth/reset-password', data),
   refreshToken: (data: { refreshToken: string }) => baseApi.post('/auth/refresh', data),
   logout: () => api.post('/auth/logout'), // Logout still uses interceptors for the access token
 }
