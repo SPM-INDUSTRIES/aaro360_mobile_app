@@ -56,7 +56,6 @@ export default function HomeScreen() {
   const [hospitals, setHospitals] = useState<Vendor[]>([])
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
   const offersScrollRef = useRef<ScrollView>(null)
   const [currentOfferIndex, setCurrentOfferIndex] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -75,7 +74,7 @@ export default function HomeScreen() {
     }, [])
   )
 
-  useEffect(() => {
+useEffect(() => {
     if (selectedCategory) {
       fetchCategoryData(selectedCategory)
     }
@@ -96,7 +95,6 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true)
-    setCurrentPage(1)
     try {
       const offers = await offerApi.getActive()
       setSpecialOffers(offers || [])
@@ -140,10 +138,10 @@ export default function HomeScreen() {
 
         let allProducts: Product[] = []
 
-        try {
+try {
           const foodItemsRes = await foodItemApi.getAll()
           const foodItemsData = foodItemsRes.data
-          const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
+          const foodItems = Array.isArray(foodItemsData) ? foodItemsData : foodItemsData?.data || []
           const categoryType = category === ProductCategory.FOOD ? 'food' : 'grocery'
           const filteredItems = foodItems.filter((item: any) =>
             item.category?.type === categoryType && item.isAvailable
@@ -175,19 +173,17 @@ export default function HomeScreen() {
           }))
           allProducts = [...itemsAsProducts]
         } catch (error) {
-          console.error(`Failed to fetch ${category} items:`, error)
+          if (__DEV__) console.error(`Failed to fetch ${category} items:`, error)
         }
 
-        try {
+try {
           const productsResponse = await productApi.getAll({
             category: category as ProductCategory,
-            page: 1,
-            limit: 100,
           })
           const productsFromTable = productsResponse.data || []
           allProducts = [...allProducts, ...productsFromTable]
         } catch (error) {
-          console.error('Failed to fetch products:', error)
+          if (__DEV__) console.error('Failed to fetch products:', error)
         }
 
         const uniqueProducts = allProducts.filter((product, index, self) =>
@@ -207,7 +203,7 @@ export default function HomeScreen() {
         setFoodCategories([])
       }
     } catch (error) {
-      console.error('Failed to fetch category data:', error)
+      if (__DEV__) console.error('Failed to fetch category data:', error)
       setTrendingBrands([])
       setAllOffers([])
       setBestOffers([])
@@ -220,7 +216,6 @@ export default function HomeScreen() {
 
   const handleCategoryPress = (category: ProductCategory) => {
     setSelectedCategory(category)
-    setCurrentPage(1)
   }
 
   const handleCallHospital = (phone: string) => {
@@ -1239,6 +1234,6 @@ const styles = StyleSheet.create({
   headerAvatarText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Theme.colors.deepBlue,
+color: Theme.colors.deepBlue,
   },
 })

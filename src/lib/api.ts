@@ -10,7 +10,16 @@ if (__DEV__) {
   console.log('API Base URL:', API_URL)
 }
 
-// Base axios instance for simple requests without interceptors (like auth)
+/**
+ * Base axios instance for public API calls without authentication interceptors.
+ * Use for:
+ * - Auth endpoints (login, register, forgot password, etc.)
+ * - Public catalog data (vendors, food items, categories)
+ * - Any endpoint that does NOT require an access token
+ * 
+ * IMPORTANT: Do NOT use for endpoints that require authentication.
+ * Use the `api` instance for authenticated requests.
+ */
 const baseApi = axios.create({
   baseURL: API_URL,
   timeout: 30000,
@@ -19,6 +28,16 @@ const baseApi = axios.create({
   },
 })
 
+/**
+ * Axios instance with authentication interceptors.
+ * Use for:
+ * - User-specific data (profile, orders)
+ * - Any endpoint that requires an access token
+ * - Any operation that needs the auth token automatically attached
+ * 
+ * IMPORTANT: Do NOT use for auth endpoints (login, register, token refresh, etc.)
+ * as they may cause circular dependency issues. Use `baseApi` for those instead.
+ */
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000, // 30 seconds timeout
@@ -49,6 +68,31 @@ export interface ResetPasswordPayload {
 
 export interface ResetPasswordResponse {
   message: string
+}
+
+// Paginated response type
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+// Food item filter types
+export interface FoodItemFilters {
+  page?: number
+  limit?: number
+  search?: string
+  categoryId?: number
+  minPrice?: number
+  maxPrice?: number
+}
+
+// Order filter types
+export interface OrderFilters {
+  page?: number
+  limit?: number
 }
 
 // Auth endpoints - use baseApi to avoid interceptor side effects during login/refresh
@@ -90,17 +134,18 @@ export const userApi = {
 export const orderApi = {
   create: (data: any) => api.post('/orders', data),
   getById: (id: number) => api.get(`/orders/${id}`),
-  getByCustomer: (customerId: number) => api.get(`/orders/customer/${customerId}`),
+  getByCustomer: (customerId: number, filters?: OrderFilters) => 
+    api.get<PaginatedResponse<any>>(`/orders/customer/${customerId}`, { params: filters }),
   updateStatus: (id: number, status: string) =>
     api.patch(`/orders/${id}/status`, { status }),
 }
 
-// Search endpoints
+// Search endpoints - use baseApi for public catalog search
 export const searchApi = {
   search: (query: string, type?: 'product' | 'food' | 'vendor' | 'all') =>
-    api.get('/search', { params: { q: query, type: type || 'all' } }),
-  getCategories: () => api.get('/food-categories'),
-  getRestaurants: (filters?: { type?: string }) => api.get('/vendors', { params: filters }),
+    baseApi.get('/search', { params: { q: query, type: type || 'all' } }),
+  getCategories: () => baseApi.get('/food-categories'),
+  getRestaurants: (filters?: { type?: string }) => baseApi.get('/vendors', { params: filters }),
 }
 
 // Vendor endpoints (use baseApi for public data - no auth required)
@@ -111,10 +156,12 @@ export const vendorApi = {
 
 // Food item endpoints
 export const foodItemApi = {
-  getAll: (filters?: { page?: number; limit?: number }) => baseApi.get('/food-items', { params: filters }),
+  getAll: (filters?: FoodItemFilters) => baseApi.get<PaginatedResponse<any>>('/food-items', { params: filters }),
   getById: (id: number) => baseApi.get(`/food-items/${id}`),
-  getByRestaurant: (restaurantId: string) => baseApi.get(`/food-items/restaurant/${restaurantId}`),
-  getByCategory: (categoryId: number) => baseApi.get(`/food-items/category/${categoryId}`),
+  getByRestaurant: (restaurantId: string, filters?: FoodItemFilters) => 
+    baseApi.get<PaginatedResponse<any>>(`/food-items/restaurant/${restaurantId}`, { params: filters }),
+  getByCategory: (categoryId: number, filters?: Omit<FoodItemFilters, 'categoryId'>) => 
+    baseApi.get<PaginatedResponse<any>>(`/food-items/category/${categoryId}`, { params: filters }),
 }
 
 // Food category endpoints

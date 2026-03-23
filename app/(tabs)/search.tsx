@@ -1,279 +1,346 @@
-import { useState, useEffect } from 'react'
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, SafeAreaView, Platform, StatusBar, Alert } from 'react-native'
-import { resolveImageUrl } from '../../src/utils/imageUrl'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
-import { useAppDispatch } from '../../src/store/store'
-import FilterModal from '../../src/components/search/FilterModal'
-import { productApi } from '../../src/lib/productApi'
-import { foodItemApi } from '../../src/lib/api'
-import { Product, ProductCategory } from '../../src/types/product'
-import { addItemToCart } from '../../src/store/slices/cartSlice'
-import { CategoryType } from '../../src/types'
-import FloatingCartButton from '../../src/components/FloatingCartButton'
-
+import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  SafeAreaView,
+  Platform,
+  StatusBar,
+  Alert,
+} from "react-native";
+import { resolveImageUrl } from "../../src/utils/imageUrl";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAppDispatch } from "../../src/store/store";
+import FilterModal from "../../src/components/search/FilterModal";
+import { productApi } from "../../src/lib/productApi";
+import { foodItemApi } from "../../src/lib/api";
+import { Product, ProductCategory } from "../../src/types/product";
+import { addItemToCart } from "../../src/store/slices/cartSlice";
+import { CategoryType } from "../../src/types";
+import FloatingCartButton from "../../src/components/FloatingCartButton";
 
 export default function SearchScreen() {
-  const router = useRouter()
-  const dispatch = useAppDispatch()
-  const { category: initialCategory, isFeatured } = useLocalSearchParams()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { category: initialCategory, isFeatured } = useLocalSearchParams();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     rating: 0,
-    brand: '',
-    category: (initialCategory as string) || '',
-    minPrice: '',
-    maxPrice: '',
-  })
+    brand: "",
+    category: (initialCategory as string) || "",
+    minPrice: "",
+    maxPrice: "",
+  });
+
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     if (initialCategory) {
-      setFilters(prev => ({ ...prev, category: initialCategory as string }))
+      setFilters((prev) => ({ ...prev, category: initialCategory as string }));
     }
-  }, [initialCategory])
+  }, [initialCategory]);
 
   const handleAddToCart = (product: Product, e: any) => {
-    e.stopPropagation()
+    e.stopPropagation();
 
     // Determine item type based on category
-    let itemType: CategoryType
+    let itemType: CategoryType;
     if (product.category === ProductCategory.FOOD) {
-      itemType = CategoryType.FOOD
+      itemType = CategoryType.FOOD;
     } else if (product.category === ProductCategory.GROCERY) {
-      itemType = CategoryType.GROCERY
+      itemType = CategoryType.GROCERY;
     } else {
-      itemType = CategoryType.MEDICINE
+      itemType = CategoryType.MEDICINE;
     }
 
     // Get restaurant ID if it's a food item
-    let restaurantId: number | undefined
-    if (typeof product.id === 'string' && product.id.startsWith('food-')) {
+    let restaurantId: number | undefined;
+    if (typeof product.id === "string" && product.id.startsWith("food-")) {
       // Extract restaurant ID from vendorId if available
       if (product.vendorId) {
         // vendorId might be a string UUID, we'll need to handle it
-        restaurantId = undefined // We'll need to fetch or store this differently
+        restaurantId = undefined; // We'll need to fetch or store this differently
       }
     }
 
     // Add item to cart - floating cart button will show the count
-    dispatch(addItemToCart({
-      itemName: product.name,
-      itemType: itemType,
-      quantity: 1,
-      unitPrice: Number(product.price || 0),
-      restaurantId: restaurantId,
-    }))
+    dispatch(
+      addItemToCart({
+        itemId:
+          typeof product.id === "string"
+            ? parseInt(product.id.replace("food-", ""), 10)
+            : product.id,
+        itemName: product.name,
+        itemType: itemType,
+        quantity: 1,
+        unitPrice: Number(product.price || 0),
+        restaurantId: restaurantId,
+      }),
+    )
       .unwrap()
       .catch((error) => {
-        Alert.alert('Error', error || 'Failed to add item to cart')
-      })
-  }
+        Alert.alert("Error", error || "Failed to add item to cart");
+      });
+  };
 
   useEffect(() => {
     // We always search/explore, but filters.category now overrides the initialCategory param
-    fetchSearchResults()
-  }, [searchQuery, filters, isFeatured])
+    // Reset to page 1 when search query or filters change
+    setCurrentPage(1);
+    fetchSearchResults(1, false);
+  }, [searchQuery, filters, isFeatured]);
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchSearchResults(nextPage, true);
+    }
+  };
 
   const applyFilters = (products: Product[]): Product[] => {
-    let filtered = [...products]
+    let filtered = [...products];
 
     // Filter by category
     if (filters.category) {
-      filtered = filtered.filter(p => p.category === filters.category)
+      filtered = filtered.filter((p) => p.category === filters.category);
     }
 
     // Filter by min price
     if (filters.minPrice) {
-      const min = parseFloat(filters.minPrice)
+      const min = parseFloat(filters.minPrice);
       if (!isNaN(min)) {
-        filtered = filtered.filter(p => p.price >= min)
+        filtered = filtered.filter((p) => p.price >= min);
       }
     }
 
     // Filter by max price
     if (filters.maxPrice) {
-      const max = parseFloat(filters.maxPrice)
+      const max = parseFloat(filters.maxPrice);
       if (!isNaN(max)) {
-        filtered = filtered.filter(p => p.price <= max)
+        filtered = filtered.filter((p) => p.price <= max);
       }
     }
 
     // Filter by rating
     if (filters.rating > 0) {
-      filtered = filtered.filter(p => (p.averageRating || 0) >= filters.rating)
+      filtered = filtered.filter(
+        (p) => (p.averageRating || 0) >= filters.rating,
+      );
     }
-
 
     // Filter by brand
     if (filters.brand) {
-      filtered = filtered.filter(p => {
-        const brandMatch = p.brand?.toLowerCase().includes(filters.brand.toLowerCase())
-        const vendorMatch = p.vendor?.name?.toLowerCase().includes(filters.brand.toLowerCase())
-        const restaurantMatch = p.restaurant?.toLowerCase().includes(filters.brand.toLowerCase())
-        return brandMatch || vendorMatch || restaurantMatch
-      })
+      filtered = filtered.filter((p) => {
+        const brandMatch = p.brand
+          ?.toLowerCase()
+          .includes(filters.brand.toLowerCase());
+        const vendorMatch = p.vendor?.name
+          ?.toLowerCase()
+          .includes(filters.brand.toLowerCase());
+        const restaurantMatch = p.restaurant
+          ?.toLowerCase()
+          .includes(filters.brand.toLowerCase());
+        return brandMatch || vendorMatch || restaurantMatch;
+      });
     }
 
-    return filtered
-  }
+    return filtered;
+  };
 
   const fetchProductsByCategory = async () => {
     try {
-      setLoading(true)
-      let fetchedProducts: Product[] = []
+      setLoading(true);
+      let fetchedProducts: Product[] = [];
 
-      if (isFeatured === 'true') {
-        fetchedProducts = await productApi.getFeatured(50)
+      if (isFeatured === "true") {
+        fetchedProducts = await productApi.getFeatured(50);
       } else if (filters.category) {
-        const categoryType = filters.category as ProductCategory
+        const categoryType = filters.category as ProductCategory;
 
         // For Food and Grocery, also fetch from food_items table
-        if (categoryType === ProductCategory.FOOD || categoryType === ProductCategory.GROCERY) {
+        if (
+          categoryType === ProductCategory.FOOD ||
+          categoryType === ProductCategory.GROCERY
+        ) {
           try {
             // Fetch food items from food_items table
-            const foodItemsRes = await foodItemApi.getAll()
-            const foodItemsData = foodItemsRes.data
-            const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
+            const foodItemsRes = await foodItemApi.getAll();
+            const foodItemsData = foodItemsRes.data;
+            const foodItems = Array.isArray(foodItemsData) ? foodItemsData : foodItemsData?.data || [];
 
             // Filter by category type
-            const categoryTypeFilter = categoryType === ProductCategory.FOOD ? 'food' : 'grocery'
-            const filteredItems = foodItems.filter((item: any) =>
-              item.category?.type === categoryTypeFilter && item.isAvailable
-            )
+            const categoryTypeFilter =
+              categoryType === ProductCategory.FOOD ? "food" : "grocery";
+            const filteredItems = foodItems.filter(
+              (item: any) =>
+                item.category?.type === categoryTypeFilter && item.isAvailable,
+            );
 
             // Convert food items to product format
-            const itemsAsProducts: Product[] = filteredItems.map((item: any) => ({
-              id: `food-${item.id}`,
-              name: item.name,
-              description: item.description || '',
-              category: categoryType,
-              subCategory: item.category?.name || '',
-              price: Number(item.price) || 0,
-              brand: '',
-              restaurant: item.restaurant?.name || '',
-              vendorId: item.restaurantId,
-              location: item.restaurant?.address || '',
-              mainImage: item.imageUrl || '',
-              images: [],
-              stock: item.quantity || (item.isAvailable ? 1 : 0),
-              inStock: item.isAvailable && (item.quantity || 0) > 0,
-              isActive: item.isAvailable,
-              tags: [],
-              isFeatured: false,
-              discountPrice: undefined,
-              reviewCount: 0,
-              averageRating: 0,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt,
-            }))
+            const itemsAsProducts: Product[] = filteredItems.map(
+              (item: any) => ({
+                id: `food-${item.id}`,
+                name: item.name,
+                description: item.description || "",
+                category: categoryType,
+                subCategory: item.category?.name || "",
+                price: Number(item.price) || 0,
+                brand: "",
+                restaurant: item.restaurant?.name || "",
+                vendorId: item.restaurantId,
+                location: item.restaurant?.address || "",
+                mainImage: item.imageUrl || "",
+                images: [],
+                stock: item.quantity || (item.isAvailable ? 1 : 0),
+                inStock: item.isAvailable && (item.quantity || 0) > 0,
+                isActive: item.isAvailable,
+                tags: [],
+                isFeatured: false,
+                discountPrice: undefined,
+                reviewCount: 0,
+                averageRating: 0,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+              }),
+            );
 
-            fetchedProducts = [...itemsAsProducts]
+            fetchedProducts = [...itemsAsProducts];
           } catch (error) {
-            console.error(`Failed to fetch ${categoryType} items:`, error)
+            console.error(`Failed to fetch ${categoryType} items:`, error);
           }
         }
 
         // Also fetch from products table
         try {
-          const productsFromTable = await productApi.getByCategory(categoryType, 100)
-          fetchedProducts = [...fetchedProducts, ...productsFromTable]
+          const productsFromTable = await productApi.getByCategory(
+            categoryType,
+            100,
+          );
+          fetchedProducts = [...fetchedProducts, ...productsFromTable];
         } catch (error) {
-          console.error('Failed to fetch products:', error)
+          console.error("Failed to fetch products:", error);
         }
 
         // Remove duplicates based on id
-        fetchedProducts = fetchedProducts.filter((product, index, self) =>
-          index === self.findIndex((p) => p.id === product.id)
-        )
+        fetchedProducts = fetchedProducts.filter(
+          (product, index, self) =>
+            index === self.findIndex((p) => p.id === product.id),
+        );
       }
 
       // Apply filters
-      fetchedProducts = applyFilters(fetchedProducts)
+      fetchedProducts = applyFilters(fetchedProducts);
 
-      setProducts(fetchedProducts)
+      setProducts(fetchedProducts);
     } catch (error) {
-      console.error('Failed to fetch products:', error)
-      setProducts([])
+      console.error("Failed to fetch products:", error);
+      setProducts([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const fetchSearchResults = async () => {
+  const fetchSearchResults = async (
+    page: number = 1,
+    append: boolean = false,
+  ) => {
     try {
-      setLoading(true)
-      let allProducts: Product[] = []
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      let allProducts: Product[] = [];
 
       // Search in products table
       try {
         const response = await productApi.getAll({
           search: searchQuery,
-          page: 1,
-          limit: 100,
-        })
-        allProducts = response.data || []
+          page: page,
+          limit: PAGE_SIZE,
+        });
+
+        const productsData = response.data || [];
+        if (append) {
+          allProducts = productsData;
+        } else {
+          allProducts = productsData;
+        }
 
         // If category is selected, filter by category
         if (filters.category) {
-          const categoryType = filters.category as ProductCategory
-          allProducts = allProducts.filter(p => p.category === categoryType)
+          const categoryType = filters.category as ProductCategory;
+          allProducts = allProducts.filter((p) => p.category === categoryType);
         }
       } catch (error) {
-        console.error('Failed to search products:', error)
+        if (__DEV__) console.error("Failed to search products:", error);
       }
 
       // Also search in food_items table for food and grocery items
       try {
-        const foodItemsRes = await foodItemApi.getAll()
-        const foodItemsData = foodItemsRes.data
-        const foodItems = Array.isArray(foodItemsData) ? foodItemsData : []
+        const foodItemsRes = await foodItemApi.getAll({
+          page,
+          limit: PAGE_SIZE,
+          search: searchQuery || undefined,
+        });
 
-        // Filter by search query (case-insensitive search in name and description)
-        const searchLower = searchQuery.toLowerCase()
-        let filteredItems = foodItems.filter((item: any) => {
-          const matchesSearch =
-            item.name?.toLowerCase().includes(searchLower) ||
-            item.description?.toLowerCase().includes(searchLower)
-          return matchesSearch && item.isAvailable
-        })
+        const responseData = foodItemsRes.data;
+        const foodItems = Array.isArray(responseData?.data)
+          ? responseData.data
+          : [];
 
         // If category is selected, also filter by category type
+        let filteredItems = foodItems;
         if (filters.category) {
-          const categoryType = filters.category as ProductCategory
-          const categoryTypeFilter = categoryType === ProductCategory.FOOD ? 'food' :
-            categoryType === ProductCategory.GROCERY ? 'grocery' : null
+          const categoryType = filters.category as ProductCategory;
+          const categoryTypeFilter =
+            categoryType === ProductCategory.FOOD
+              ? "food"
+              : categoryType === ProductCategory.GROCERY
+                ? "grocery"
+                : null;
           if (categoryTypeFilter) {
-            filteredItems = filteredItems.filter((item: any) =>
-              item.category?.type === categoryTypeFilter
-            )
+            filteredItems = filteredItems.filter(
+              (item: any) => item.category?.type === categoryTypeFilter,
+            );
           }
         }
 
         // Convert food items to product format
         const itemsAsProducts: Product[] = filteredItems.map((item: any) => {
           // Determine category based on food category type
-          let productCategory = ProductCategory.FOOD
-          if (item.category?.type === 'grocery') {
-            productCategory = ProductCategory.GROCERY
-          } else if (item.category?.type === 'food') {
-            productCategory = ProductCategory.FOOD
+          let productCategory = ProductCategory.FOOD;
+          if (item.category?.type === "grocery") {
+            productCategory = ProductCategory.GROCERY;
+          } else if (item.category?.type === "food") {
+            productCategory = ProductCategory.FOOD;
           }
 
           return {
             id: `food-${item.id}`,
             name: item.name,
-            description: item.description || '',
+            description: item.description || "",
             category: productCategory,
-            subCategory: item.category?.name || '',
+            subCategory: item.category?.name || "",
             price: Number(item.price) || 0,
-            brand: '',
-            restaurant: item.restaurant?.name || '',
+            brand: "",
+            restaurant: item.restaurant?.name || "",
             vendorId: item.restaurantId,
-            location: item.restaurant?.address || '',
-            mainImage: item.imageUrl || '',
+            location: item.restaurant?.address || "",
+            mainImage: item.imageUrl || "",
             images: [],
             stock: item.quantity || (item.isAvailable ? 1 : 0),
             inStock: item.isAvailable && (item.quantity || 0) > 0,
@@ -285,46 +352,59 @@ export default function SearchScreen() {
             averageRating: 0,
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
-          }
-        })
+          };
+        });
 
-        allProducts = [...allProducts, ...itemsAsProducts]
+        allProducts = [...allProducts, ...itemsAsProducts];
       } catch (error) {
-        console.error('Failed to search food items:', error)
+        if (__DEV__) console.error("Failed to search food items:", error);
       }
 
       // Remove duplicates based on id
-      const uniqueProducts = allProducts.filter((product, index, self) =>
-        index === self.findIndex((p) => p.id === product.id)
-      )
+      const uniqueProducts = allProducts.filter(
+        (product, index, self) =>
+          index === self.findIndex((p) => p.id === product.id),
+      );
 
       // Apply filters
-      const filteredProducts = applyFilters(uniqueProducts)
+      const filteredProducts = applyFilters(uniqueProducts);
 
-      setProducts(filteredProducts)
+      if (append) {
+        setProducts((prev) => [...prev, ...filteredProducts]);
+      } else {
+        setProducts(filteredProducts);
+      }
+
+      setHasMore(uniqueProducts.length >= PAGE_SIZE);
     } catch (error) {
-      console.error('Failed to search:', error)
-      setProducts([])
+      if (__DEV__) console.error("Failed to search:", error);
+      setProducts([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
+      setLoadingMore(false);
     }
-  }
+  };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query)
-  }
+    setSearchQuery(query);
+  };
 
   const getCategoryTitle = () => {
-    if (filters.category === ProductCategory.FOOD) return 'Food Products'
-    if (filters.category === ProductCategory.GROCERY) return 'Grocery Products'
-    if (filters.category === ProductCategory.MEDICINE) return 'Medicine Products'
-    if (isFeatured === 'true') return 'Featured Products'
-    return 'Explore All Products'
-  }
+    if (filters.category === ProductCategory.FOOD) return "Food Products";
+    if (filters.category === ProductCategory.GROCERY) return "Grocery Products";
+    if (filters.category === ProductCategory.MEDICINE)
+      return "Medicine Products";
+    if (isFeatured === "true") return "Featured Products";
+    return "Explore All Products";
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
+        translucent={false}
+      />
       {/* Search Header */}
       <View style={styles.searchHeader}>
         <View style={styles.categoryTitleContainer}>
@@ -332,17 +412,26 @@ export default function SearchScreen() {
         </View>
         <View style={styles.searchRow}>
           <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <Ionicons
+              name="search"
+              size={20}
+              color="#666"
+              style={styles.searchIcon}
+            />
             <TextInput
               style={styles.searchInput}
-              placeholder={filters.category ? `Search ${filters.category}...` : "Search for Pizza, Painkiller, etc..."}
+              placeholder={
+                filters.category
+                  ? `Search ${filters.category}...`
+                  : "Search for Pizza, Painkiller, etc..."
+              }
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={handleSearch}
               autoFocus={false}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
                 <Ionicons name="close-circle" size={20} color="#666" />
               </TouchableOpacity>
             )}
@@ -366,7 +455,7 @@ export default function SearchScreen() {
         ) : products.length > 0 ? (
           <View style={styles.resultsList}>
             <Text style={styles.resultsCount}>
-              {products.length} {products.length === 1 ? 'result' : 'results'}
+              {products.length} {products.length === 1 ? "result" : "results"}
             </Text>
             {products.map((product) => (
               <TouchableOpacity
@@ -374,30 +463,41 @@ export default function SearchScreen() {
                 style={styles.productItem}
                 activeOpacity={0.7}
                 onPress={() => {
-                  if (typeof product.id === 'string' && product.id.startsWith('food-')) {
-                    const foodItemId = product.id.replace('food-', '')
-                    router.push(`/food-item/${foodItemId}`)
+                  if (
+                    typeof product.id === "string" &&
+                    product.id.startsWith("food-")
+                  ) {
+                    const foodItemId = product.id.replace("food-", "");
+                    router.push(`/food-item/${foodItemId}`);
                   } else {
-                    router.push(`/product/${product.id}`)
+                    router.push(`/product/${product.id}`);
                   }
                 }}
               >
                 <View style={styles.productImageContainer}>
                   {product.mainImage ? (
                     <Image
-                      source={{ uri: resolveImageUrl(product.mainImage) ?? product.mainImage }}
+                      source={{
+                        uri:
+                          resolveImageUrl(product.mainImage) ??
+                          product.mainImage,
+                      }}
                       style={styles.productImage}
                       resizeMode="cover"
                     />
                   ) : (
-                    <View style={[styles.productImage, styles.placeholderImage]}>
+                    <View
+                      style={[styles.productImage, styles.placeholderImage]}
+                    >
                       <Ionicons name="image-outline" size={32} color="#CCC" />
                     </View>
                   )}
                 </View>
                 <View style={styles.productDetails}>
                   <View style={styles.productHeader}>
-                    <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+                    <Text style={styles.productName} numberOfLines={2}>
+                      {product.name}
+                    </Text>
                     {(product.vendor?.name || product.restaurant) && (
                       <View style={styles.vendorRow}>
                         <Ionicons name="location" size={14} color="#999" />
@@ -409,7 +509,9 @@ export default function SearchScreen() {
                   </View>
                   <View style={styles.productFooter}>
                     <View style={styles.priceContainer}>
-                      <Text style={styles.productPrice}>රු{Number(product.price || 0).toFixed(2)}</Text>
+                      <Text style={styles.productPrice}>
+                        රු{Number(product.price || 0).toFixed(2)}
+                      </Text>
                       {product.discountPrice && (
                         <Text style={styles.productOriginalPrice}>
                           රු{Number(product.discountPrice || 0).toFixed(2)}
@@ -426,6 +528,20 @@ export default function SearchScreen() {
                 </View>
               </TouchableOpacity>
             ))}
+
+            {hasMore && (
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load More</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         ) : searchQuery.length === 0 && !filters.category && !isFeatured ? (
           <View style={styles.emptyState}>
@@ -454,25 +570,25 @@ export default function SearchScreen() {
       />
       <FloatingCartButton />
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
+    backgroundColor: "#FFFFFF",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0,
   },
   searchHeader: {
     padding: 15,
     paddingTop: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   categoryTitleContainer: {
@@ -480,13 +596,13 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#124569',
+    fontWeight: "bold",
+    color: "#124569",
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
     borderRadius: 12,
     paddingHorizontal: 15,
     flex: 1,
@@ -498,36 +614,36 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: "#000000",
     paddingVertical: 12,
   },
   filterButton: {
     padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   results: {
     flex: 1,
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingTop: 120,
     paddingHorizontal: 40,
   },
   emptyText: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontWeight: "600",
+    color: "#1A1A1A",
     marginTop: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptySubtext: {
     fontSize: 15,
-    color: '#666',
+    color: "#666",
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
   resultsList: {
@@ -535,50 +651,50 @@ const styles = StyleSheet.create({
   },
   resultsText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   resultsCount: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: "500",
+    color: "#666",
     marginBottom: 12,
     paddingHorizontal: 20,
     paddingTop: 16,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   productItem: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
+    flexDirection: "row",
+    backgroundColor: "#FFF",
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    alignItems: 'stretch',
+    borderColor: "#F0F0F0",
+    alignItems: "stretch",
   },
   productImageContainer: {
     width: 120,
     height: 150,
-    backgroundColor: '#F8F8F8',
-    alignSelf: 'stretch' as const,
-    resizeMode: 'cover',
+    backgroundColor: "#F8F8F8",
+    alignSelf: "stretch" as const,
+    resizeMode: "cover",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   placeholderImage: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
   },
   placeholderEmoji: {
     fontSize: 32,
@@ -589,62 +705,62 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     paddingBottom: 12,
     paddingLeft: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   productHeader: {
     flex: 1,
   },
   productName: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontWeight: "600",
+    color: "#1A1A1A",
     marginBottom: 6,
     lineHeight: 22,
   },
   vendorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 4,
   },
   productVendor: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginLeft: 4,
     flex: 1,
   },
   productFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: "#F0F0F0",
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     gap: 8,
   },
   productPrice: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#124569',
+    fontWeight: "700",
+    color: "#124569",
   },
   productOriginalPrice: {
     fontSize: 14,
-    color: '#999',
-    textDecorationLine: 'line-through',
-    fontWeight: '400',
+    color: "#999",
+    textDecorationLine: "line-through",
+    fontWeight: "400",
   },
   addButton: {
-    backgroundColor: '#f27424',
+    backgroundColor: "#f27424",
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#f27424',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#f27424",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -652,13 +768,26 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
     marginTop: 16,
-    color: '#666',
+    color: "#666",
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
-})
+  loadMoreButton: {
+    backgroundColor: "#124569",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  loadMoreText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});

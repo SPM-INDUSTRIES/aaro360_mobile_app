@@ -1,30 +1,41 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native'
-import { Theme } from '../src/styles/theme'
-import * as Location from 'expo-location'
-import { useRouter, useFocusEffect } from 'expo-router'
-import { useSelector } from 'react-redux'
-import { store, RootState, useAppDispatch } from '../src/store/store'
-import { clearCartAsync } from '../src/store/slices/cartSlice'
-import { orderApi, userApi } from '../src/lib/api'
-import { useState, useEffect, useCallback } from 'react'
-import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useAlert } from '../src/context/AlertContext'
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+} from "react-native";
+import { Theme } from "../src/styles/theme";
+import * as Location from "expo-location";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useSelector } from "react-redux";
+import { store, RootState, useAppDispatch } from "../src/store/store";
+import { clearCartAsync } from "../src/store/slices/cartSlice";
+import { orderApi, userApi } from "../src/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAlert } from "../src/context/AlertContext";
 
-const CUSTOMER_ID_STORAGE_KEY = '@aaro360/customerId'
+const CUSTOMER_ID_STORAGE_KEY = "@aaro360/customerId";
 
 export default function CheckoutScreen() {
-  const router = useRouter()
-  const dispatch = useAppDispatch()
-  const { user } = useSelector((state: RootState) => state.auth)
-  const { items, total, deliveryFee } = useSelector((state: RootState) => state.cart)
-  const { showAlert } = useAlert()
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { items, total, deliveryFee } = useSelector(
+    (state: RootState) => state.cart,
+  );
+  const { showAlert } = useAlert();
 
-  const [deliveryAddress, setDeliveryAddress] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   // Fetch user profile and location whenever the screen is focused
   useFocusEffect(
@@ -32,125 +43,155 @@ export default function CheckoutScreen() {
       const fetchUserProfile = async () => {
         if (user?.id) {
           try {
-            const response = await userApi.getProfile(user.id)
-            if (response.data?.address) setDeliveryAddress(response.data.address)
-            if (response.data?.phoneNumber) setPhoneNumber(response.data.phoneNumber)
+            const response = await userApi.getProfile(user.id);
+            if (response.data?.address)
+              setDeliveryAddress(response.data.address);
+            if (response.data?.phoneNumber)
+              setPhoneNumber(response.data.phoneNumber);
           } catch (error) {
-            console.error('Failed to fetch user profile:', error)
+            if (__DEV__) console.error("Failed to fetch user profile:", error);
           }
         }
-      }
+      };
       const fetchLocation = async () => {
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync()
-          if (status === 'granted') {
-            const pos = await Location.getCurrentPositionAsync({})
-            setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const pos = await Location.getCurrentPositionAsync({});
+            setLocation({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
           }
         } catch (error) {
-          console.error('Failed to get location:', error)
+          if (__DEV__) console.error("Failed to get location:", error);
         }
-      }
-      fetchUserProfile()
-      fetchLocation()
-    }, [user?.id])
-  )
+      };
+      fetchUserProfile();
+      fetchLocation();
+    }, [user?.id]),
+  );
 
   const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
-      showAlert({ title: 'Error', message: 'Please enter delivery address', type: 'warning' })
-      return
+      showAlert({
+        title: "Error",
+        message: "Please enter delivery address",
+        type: "warning",
+      });
+      return;
     }
 
     if (!phoneNumber.trim()) {
-      showAlert({ title: 'Error', message: 'Please enter your phone number', type: 'warning' })
-      return
+      showAlert({
+        title: "Error",
+        message: "Please enter your phone number",
+        type: "warning",
+      });
+      return;
     }
 
     // Phone number validation
-    const phoneRegex = /^0[0-9]{9}$/
+    const phoneRegex = /^0[0-9]{9}$/;
     if (!phoneRegex.test(phoneNumber.trim())) {
-      showAlert({ title: 'Invalid Phone Number', message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)', type: 'warning' })
-      return
+      showAlert({
+        title: "Invalid Phone Number",
+        message:
+          "Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)",
+        type: "warning",
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       if (!user?.id) {
-        showAlert({ title: 'Error', message: 'You must be logged in to place an order', type: 'error' })
-        return
+        showAlert({
+          title: "Error",
+          message: "You must be logged in to place an order",
+          type: "error",
+        });
+        return;
       }
 
-      const customerId = user.id
+      const customerId = user.id;
 
       // Ensure all items have valid data
       if (items.length === 0) {
-        showAlert({ title: 'Error', message: 'Your cart is empty', type: 'warning' })
-        return
+        showAlert({
+          title: "Error",
+          message: "Your cart is empty",
+          type: "warning",
+        });
+        return;
       }
 
       const orderData = {
         customerId: Number(customerId),
         items: items.map((item) => {
-          if (!item.itemName || item.quantity <= 0 || item.unitPrice <= 0) {
-            throw new Error(`Invalid item: ${item.itemName}`)
+          if (!item.itemName || item.quantity <= 0 || !item.itemId) {
+            throw new Error(`Invalid item: ${item.itemName}`);
           }
           return {
+            itemId: Number(item.itemId),
             itemName: String(item.itemName),
-            itemType: String(item.itemType || 'food'), // Ensure itemType is always a string
+            itemType: String(item.itemType || "food"),
             quantity: Number(item.quantity),
-            unitPrice: Number(item.unitPrice),
-          }
+          };
         }),
         deliveryAddress: String(deliveryAddress).trim(),
         phoneNumber: String(phoneNumber).trim(),
         deliveryLatitude: location?.lat ?? 7.7124,
         deliveryLongitude: location?.lng ?? 81.6924,
         deliveryFee: Number(deliveryFee || 0),
-        discount: Number(0), // Add discount field
-        paymentMethod: String(paymentMethod || 'cash_on_delivery'),
-      }
+        discount: Number(0),
+        paymentMethod: String(paymentMethod || "cash_on_delivery"),
+      };
 
-      const response = await orderApi.create(orderData)
-      dispatch(clearCartAsync())
+      const response = await orderApi.create(orderData);
+      dispatch(clearCartAsync());
 
       // Backend returns order object directly in response.data
-      const order = response.data
-      console.log('Order creation response:', JSON.stringify(order, null, 2))
+      const order = response.data;
+      if (__DEV__)
+        console.log("Order creation response:", JSON.stringify(order, null, 2));
 
       if (!order || !order.id) {
-        throw new Error('Invalid order response')
+        throw new Error("Invalid order response");
       }
 
-      router.push(`/order-tracking?id=${order.id}&fromCheckout=true`)
+      router.push(`/order-tracking?id=${order.id}&fromCheckout=true`);
     } catch (error: any) {
-      console.error('Order creation error:', error)
-      console.error('Error response:', error.response?.data)
+      if (__DEV__) {
+        console.error("Order creation error:", error);
+        console.error("Error response:", error.response?.data);
+      }
 
       // Extract validation errors if present
-      let errorMessage = 'Failed to place order'
+      let errorMessage = "Failed to place order";
       if (error.response?.status === 400) {
-        const validationErrors = error.response?.data?.message
+        const validationErrors = error.response?.data?.message;
         if (Array.isArray(validationErrors)) {
-          errorMessage = 'Validation errors:\n' + validationErrors.join('\n')
-        } else if (typeof validationErrors === 'string') {
-          errorMessage = validationErrors
+          errorMessage = "Validation errors:\n" + validationErrors.join("\n");
+        } else if (typeof validationErrors === "string") {
+          errorMessage = validationErrors;
         } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error
+          errorMessage = error.response.data.error;
         } else {
-          errorMessage = 'Invalid request data. Please check all fields.'
+          errorMessage = "Invalid request data. Please check all fields.";
         }
       } else {
-        errorMessage = error.response?.data?.message ||
+        errorMessage =
+          error.response?.data?.message ||
           error.response?.data?.error ||
           error.message ||
-          'Unknown error'
+          "Unknown error";
       }
-      showAlert({ title: 'Order Error', message: errorMessage, type: 'error' })
+      showAlert({ title: "Order Error", message: errorMessage, type: "error" });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -190,14 +231,23 @@ export default function CheckoutScreen() {
           <TouchableOpacity
             style={[
               styles.paymentOption,
-              paymentMethod === 'cash_on_delivery' && styles.paymentOptionActive,
+              paymentMethod === "cash_on_delivery" &&
+                styles.paymentOptionActive,
             ]}
-            onPress={() => setPaymentMethod('cash_on_delivery')}
+            onPress={() => setPaymentMethod("cash_on_delivery")}
           >
-            <Ionicons name="cash-outline" size={24} color={Theme.colors.deepBlue} />
+            <Ionicons
+              name="cash-outline"
+              size={24}
+              color={Theme.colors.deepBlue}
+            />
             <Text style={styles.paymentText}>Cash on Delivery</Text>
-            {paymentMethod === 'cash_on_delivery' && (
-              <Ionicons name="checkmark-circle" size={24} color={Theme.colors.primary} />
+            {paymentMethod === "cash_on_delivery" && (
+              <Ionicons
+                name="checkmark-circle"
+                size={24}
+                color={Theme.colors.primary}
+              />
             )}
           </TouchableOpacity>
         </View>
@@ -223,17 +273,20 @@ export default function CheckoutScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.placeOrderButton, isSubmitting && styles.placeOrderButtonDisabled]}
+          style={[
+            styles.placeOrderButton,
+            isSubmitting && styles.placeOrderButtonDisabled,
+          ]}
           onPress={handlePlaceOrder}
           disabled={isSubmitting}
         >
           <Text style={styles.placeOrderButtonText}>
-            {isSubmitting ? 'Placing Order...' : 'Place Order'}
+            {isSubmitting ? "Placing Order..." : "Place Order"}
           </Text>
         </TouchableOpacity>
       </View>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -243,16 +296,16 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.border,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Theme.colors.deepBlue,
   },
   content: {
@@ -264,7 +317,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Theme.colors.deepBlue,
     marginBottom: 15,
   },
@@ -275,7 +328,7 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 16,
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   inputPhone: {
     borderWidth: 1,
@@ -285,8 +338,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 15,
     borderWidth: 1,
     borderColor: Theme.colors.border,
@@ -303,8 +356,8 @@ const styles = StyleSheet.create({
     color: Theme.colors.deepBlue,
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   summaryLabel: {
@@ -314,7 +367,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 14,
     color: Theme.colors.deepBlue,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   totalRow: {
     borderTopWidth: 1,
@@ -324,12 +377,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Theme.colors.deepBlue,
   },
   totalValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Theme.colors.primary,
   },
   footer: {
@@ -342,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
     padding: 18,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   placeOrderButtonDisabled: {
     opacity: 0.6,
@@ -350,6 +403,6 @@ const styles = StyleSheet.create({
   placeOrderButtonText: {
     color: Theme.colors.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
-})
+});

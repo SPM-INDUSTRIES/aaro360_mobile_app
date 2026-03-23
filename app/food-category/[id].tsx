@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native'
 import { resolveImageUrl } from '../../src/utils/imageUrl'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Skeleton } from '../../src/components/SkeletonLoader'
 import { Theme } from '../../src/styles/theme'
-import { foodCategoryApi, foodItemApi } from '../../src/lib/api'
+import { foodCategoryApi, foodItemApi, FoodItemFilters } from '../../src/lib/api'
 
 interface FoodCategory {
   id: number
@@ -39,52 +39,78 @@ export default function FoodCategoryDetailScreen() {
   const [category, setCategory] = useState<FoodCategory | null>(null)
   const [foodItems, setFoodItems] = useState<FoodItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [totalItems, setTotalItems] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [priceError, setPriceError] = useState('')
 
+  const PAGE_SIZE = 10
+
+  const buildFilters = useCallback((page: number = 1): Omit<FoodItemFilters, 'categoryId'> => {
+    const filters: Omit<FoodItemFilters, 'categoryId'> = { page, limit: PAGE_SIZE }
+    if (searchQuery) filters.search = searchQuery
+    if (minPrice && !isNaN(parseFloat(minPrice))) filters.minPrice = parseFloat(minPrice)
+    if (maxPrice && !isNaN(parseFloat(maxPrice))) filters.maxPrice = parseFloat(maxPrice)
+    return filters
+  }, [searchQuery, minPrice, maxPrice])
+
   useEffect(() => {
-    fetchData()
+    fetchCategory()
   }, [categoryId])
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchFoodItems(1, false)
+  }, [categoryId, searchQuery, minPrice, maxPrice])
+
+  const fetchCategory = async () => {
     try {
-      setLoading(true)
-      const [categoryRes, foodItemsRes] = await Promise.all([
-        foodCategoryApi.getById(Number(categoryId)),
-        foodItemApi.getByCategory(Number(categoryId)),
-      ])
-
-      const categoryData = categoryRes.data
-      const foodItemsData = foodItemsRes.data
-
-      setCategory(categoryData)
-      setFoodItems(Array.isArray(foodItemsData) ? foodItemsData : [])
+      const categoryRes = await foodCategoryApi.getById(Number(categoryId))
+      setCategory(categoryRes.data)
     } catch (error) {
-      console.error('Failed to fetch data:', error)
-    } finally {
-      setLoading(false)
+      if (__DEV__) console.error('Failed to fetch category:', error)
     }
   }
 
-  const filteredItems = foodItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const fetchFoodItems = async (page: number = 1, append: boolean = false) => {
+    try {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
 
-    const min = minPrice ? parseFloat(minPrice) : 0
-    const max = maxPrice ? parseFloat(maxPrice) : Infinity
+      const filters = buildFilters(page)
+      const foodItemsRes = await foodItemApi.getByCategory(Number(categoryId), filters)
+      
+      const responseData = foodItemsRes.data
+      const newFoodItems = Array.isArray(responseData?.data) ? responseData.data : []
+      const total = responseData?.total || 0
 
-    // Basic numerical validation
-    if (minPrice && isNaN(min)) return false
-    if (maxPrice && isNaN(max)) return false
+      if (append) {
+        setFoodItems(prev => [...prev, ...newFoodItems])
+      } else {
+        setFoodItems(newFoodItems)
+      }
+      
+      setTotalItems(total)
+    } catch (error) {
+      if (__DEV__) console.error('Failed to fetch food items:', error)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }
 
-    const matchesMinPrice = !minPrice || item.price >= min
-    const matchesMaxPrice = !maxPrice || item.price <= max
+  const loadMore = () => {
+    if (!loadingMore && foodItems.length < totalItems) {
+      const nextPage = Math.ceil(foodItems.length / PAGE_SIZE) + 1
+      fetchFoodItems(nextPage, true)
+    }
+  }
 
-    return matchesSearch && matchesMinPrice && matchesMaxPrice && item.isAvailable
-  })
-
-  // Add a side effect to check min/max logic and warn user
+  // Validate min/max price
   useEffect(() => {
     if (minPrice && maxPrice) {
       const min = parseFloat(minPrice)
@@ -211,9 +237,9 @@ export default function FoodCategoryDetailScreen() {
           {/* Food Items */}
           <View style={styles.itemsContainer}>
             <Text style={styles.itemsTitle}>
-              {filteredItems.length} {filteredItems.length === 1 ? 'Item' : 'Items'}
+              {totalItems} {totalItems === 1 ? 'Item' : 'Items'}
             </Text>
-            {filteredItems.map((item) => (
+            {foodItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.foodCard}
@@ -247,7 +273,21 @@ export default function FoodCategoryDetailScreen() {
               </TouchableOpacity>
             ))}
 
-            {filteredItems.length === 0 && (
+            {foodItems.length < totalItems && (
+              <TouchableOpacity 
+                style={styles.loadMoreButton} 
+                onPress={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color="#124569" />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load more</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {foodItems.length === 0 && !loading && (
               <View style={styles.emptyState}>
                 <Ionicons name="fast-food-outline" size={64} color="#CCC" />
                 <Text style={styles.emptyText}>No items found</Text>
@@ -426,5 +466,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '600',
     textAlign: 'right',
+  },
+  loadMoreButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  loadMoreText: {
+    color: '#124569',
+    fontSize: 14,
+    fontWeight: '600',
   },
 })

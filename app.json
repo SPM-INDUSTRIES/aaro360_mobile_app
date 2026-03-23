@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Aaro360",
-    "slug": "aaro360-mobile",
+    "slug": "aaro360",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/appicon/icon.png",
@@ -18,7 +18,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.aaro360.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Aaro360 uses your photo library to let you set a profile picture for your account."
+        "NSPhotoLibraryUsageDescription": "Aaro360 uses your photo library to let you set a profile picture for your account.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -57,13 +58,20 @@
       "expo-secure-store"
     ],
     "scheme": "aaro360",
+    "updates": {
+      "url": "https://u.expo.dev/817b2097-c556-449f-8175-9da1f0617160"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "2c6b3657-2326-4bea-9d19-83af5375dfc3"
+        "projectId": "817b2097-c556-449f-8175-9da1f0617160"
       }
-    }
+    },
+    "owner": "spmindustriess-organization"
   }
 }

@@ -70,7 +70,7 @@ export const sendOTP = async (
       throw new Error('Invalid phone number format. Expected: +94XXXXXXXXX (9 digits)')
     }
 
-    console.log('Sending OTP to:', formattedPhone)
+    if (__DEV__) console.log('Sending OTP to:', formattedPhone)
 
     // Add timeout to prevent infinite loading (30 seconds)
     const confirmationResult = await withTimeout(
@@ -79,10 +79,10 @@ export const sendOTP = async (
       'Request timed out. Please check your internet connection and try again.'
     )
 
-    console.log('OTP sent successfully')
+    if (__DEV__) console.log('OTP sent successfully')
     return confirmationResult
   } catch (error: any) {
-    console.error('Error sending OTP:', error)
+    if (__DEV__) console.error('Error sending OTP:', error)
     
     // Provide more specific error messages
     if (error.code === 'auth/invalid-phone-number') {
@@ -120,7 +120,7 @@ export const verifyOTP = async (
     const idToken = await result.user.getIdToken()
     return idToken
   } catch (error: any) {
-    console.error('Error verifying OTP:', error)
+    if (__DEV__) console.error('Error verifying OTP:', error)
     if (error.code === 'auth/invalid-verification-code') {
       throw new Error('Invalid OTP code. Please try again.')
     } else if (error.code === 'auth/code-expired') {

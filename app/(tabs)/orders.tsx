@@ -43,14 +43,14 @@ export default function OrdersScreen() {
       setLoading(true)
 
       if (!user?.id) {
-        console.log('No user id found in auth state')
+        if (__DEV__) console.log('No user id found in auth state')
         setOrders([])
         return
       }
 
-      console.log('Fetching orders for userId:', user.id)
+      if (__DEV__) console.log('Fetching orders for userId:', user.id)
       const res = await orderApi.getByCustomer(user.id)
-      console.log('Orders API response:', res)
+      if (__DEV__) console.log('Orders API response:', res)
 
       // Handle different response structures
       let ordersData: Order[] = []
@@ -62,11 +62,13 @@ export default function OrdersScreen() {
         ordersData = res
       }
 
-      console.log('Parsed orders:', ordersData.length)
+      if (__DEV__) console.log('Parsed orders:', ordersData.length)
       setOrders(ordersData)
     } catch (error: any) {
-      console.error('Failed to load orders:', error)
-      console.error('Error details:', error.response?.data || error.message)
+      if (__DEV__) {
+        console.error('Failed to load orders:', error)
+        console.error('Error details:', error.response?.data || error.message)
+      }
       setOrders([])
     } finally {
       setLoading(false)
@@ -109,15 +111,10 @@ export default function OrdersScreen() {
             <Ionicons name="receipt-outline" size={64} color="#CCC" />
             <Text style={styles.emptyText}>No orders yet</Text>
             <Text style={styles.emptySubtext}>
-              {user?.id
-                ? `No orders found for user ID: ${user.id}`
+              {user?.firstName
+                ? `${user.firstName}, you haven't placed any orders yet. Start shopping to see your orders here!`
                 : 'Place an order to see it here'}
             </Text>
-            {user?.id && (
-              <Text style={styles.debugText}>
-                User ID: {user.id}
-              </Text>
-            )}
             <TouchableOpacity
               style={styles.shopButton}
               onPress={() => router.push('/(tabs)/')}
@@ -270,11 +267,5 @@ const styles = StyleSheet.create({
   orderDate: {
     fontSize: 12,
     color: '#999',
-  },
-  debugText: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 8,
-    fontStyle: 'italic',
   },
 })

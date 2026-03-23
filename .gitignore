@@ -98,3 +98,4 @@ bun.lock
 google-services.json
 GoogleService-Info.plist
 firebase-config.json
+pnpm-lock.yaml

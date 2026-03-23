@@ -85,7 +85,7 @@ export const loginWithGoogle = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Google login error:', error)
+      if (__DEV__) console.error('Google login error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -106,7 +106,7 @@ export const loginWithEmail = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Email login error:', error)
+      if (__DEV__) console.error('Email login error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -127,7 +127,7 @@ export const register = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Register error:', error)
+      if (__DEV__) console.error('Register error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -143,7 +143,7 @@ export const sendOtp = createAsyncThunk(
       const response = await authApi.sendOtp({ email })
       return { message: response.data.message }
     } catch (error: any) {
-      console.error('Send OTP error:', error)
+      if (__DEV__) console.error('Send OTP error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -159,7 +159,7 @@ export const verifyOtp = createAsyncThunk(
       const response = await authApi.verifyOtp(data)
       return { verified: response.data.verified }
     } catch (error: any) {
-      console.error('Verify OTP error:', error)
+      if (__DEV__) console.error('Verify OTP error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -180,7 +180,7 @@ export const loginWithPhone = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Phone login error:', error)
+      if (__DEV__) console.error('Phone login error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -201,7 +201,7 @@ export const registerWithPhone = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Phone register error:', error)
+      if (__DEV__) console.error('Phone register error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -217,15 +217,15 @@ export const refreshAccessToken = createAsyncThunk(
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY)
 
       if (!refreshToken) {
-        console.error('Refresh token error: No refresh token found in SecureStore')
+        if (__DEV__) console.error('Refresh token error: No refresh token found in SecureStore')
         return rejectWithValue('Session expired. Please login again.')
       }
 
-      console.log('Attempting to refresh access token...')
+      if (__DEV__) console.log('Attempting to refresh access token...')
       const response = await authApi.refreshToken({ refreshToken })
       const { accessToken, refreshToken: newRefreshToken, user } = response.data
 
-      console.log('Token refresh successful')
+      if (__DEV__) console.log('Token refresh successful')
       // Update refresh token
       if (newRefreshToken) {
         await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
@@ -233,7 +233,7 @@ export const refreshAccessToken = createAsyncThunk(
 
       return { accessToken, user }
     } catch (error: any) {
-      console.error('Refresh token API call failed:', error.response?.data || error.message)
+      if (__DEV__) console.error('Refresh token API call failed:', error.response?.data || error.message)
       // If refresh fails, clear stored token
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
       return rejectWithValue(getErrorMessage(error))
@@ -257,7 +257,7 @@ export const logoutUser = createAsyncThunk(
           await authApi.logout()
         } catch (error) {
           // Continue with logout even if API call fails
-          console.warn('Logout API call failed:', error)
+          if (__DEV__) console.warn('Logout API call failed:', error)
         }
       }
 

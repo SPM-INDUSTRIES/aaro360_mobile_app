@@ -41,12 +41,12 @@ function AppContent() {
 
     // Redirect unauthenticated users to login (except on auth screens)
     if (!isAuthenticated && !isAuthScreen) {
-      console.log('User unauthenticated, redirecting to login...')
+      if (__DEV__) console.log('User unauthenticated, redirecting to login...')
       router.replace('/login')
     }
     // Redirect authenticated users away from auth screens
     else if (isAuthenticated && isAuthScreen) {
-      console.log('User authenticated, redirecting to home...')
+      if (__DEV__) console.log('User authenticated, redirecting to home...')
       router.replace('/(tabs)/')
     }
   }, [isReady, isAuthenticated, segments, navigationState?.key])
