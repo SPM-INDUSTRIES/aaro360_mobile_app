@@ -22,12 +22,9 @@ on:
           - preview
           - production
 
-env:
-  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
 jobs:
   build:
-    name: Build ${{ github.event.inputs.profile || (github.ref == 'refs/heads/main' && 'production') || (github.ref == 'refs/heads/development' && 'development') || 'preview' }}
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -59,25 +56,32 @@ jobs:
           echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
           echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}" >> .env
 
-      - name: Build on EAS
+      - name: Determine build profile
+        id: profile
         run: |
-          PROFILE="${{ github.event.inputs.profile || (github.ref == 'refs/heads/main' && 'production') || (github.ref == 'refs/heads/development' && 'development') || 'preview' }}"
-          eas build --platform android --profile $PROFILE --non-interactive --wait
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.profile }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "name=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/development" ]; then
+            echo "name=development" >> $GITHUB_OUTPUT
+          else
+            echo "name=preview" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build on EAS
+        run: eas build --platform android --profile ${{ steps.profile.outputs.name }} --non-interactive --wait
 
       - name: Comment build URL on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: builds } = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `📱 **EAS Build Completed!**\n\nBuild profile: ${process.env.PROFILE}\n\nCheck the [EAS dashboard](https://expo.dev/accounts/${{ secrets.EXPO_ACCOUNT }}/projects/mobile-app/builds) for details.`
+              body: `📱 **EAS Build Completed!**\n\nBuild profile: ${{ steps.profile.outputs.name }}\n\nCheck the [EAS dashboard](https://expo.dev/accounts/${{ secrets.EXPO_ACCOUNT }}/projects/aaro360/builds) for details.`
             });
 
   notify:
@@ -87,18 +91,17 @@ jobs:
     if: always()
     steps:
       - name: Send Slack notification
-        if: ${{ secrets.SLACK_WEBHOOK_URL }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           payload: |
             {
-              "text": "EAS Build ${{ job.status }}",
+              "text": "EAS Build ${{ needs.build.result }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*EAS Build Status*\n\n• Profile: ${{ github.event.inputs.profile || (github.ref == 'refs/heads/main' && 'production') || (github.ref == 'refs/heads/development' && 'development') || 'preview' }}\n• Branch: ${{ github.ref_name }}\n• Status: ${{ job.status }}\n• Commit: ${{ github.sha }}\n• Actor: ${{ github.actor }}"
+                    "text": "*EAS Build Status*\n\n• Branch: ${{ github.ref_name }}\n• Status: ${{ needs.build.result }}\n• Commit: ${{ github.sha }}\n• Actor: ${{ github.actor }}"
                   }
                 }
               ]
@@ -106,3 +109,4 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
