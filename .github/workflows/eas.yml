@@ -1,0 +1,159 @@
+name: EAS Build & Submit
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+      submit:
+        description: 'Submit to Google Play after build'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.build.outputs.build_id }}
+      profile: ${{ steps.profile.outputs.name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env file
+        run: |
+          echo "EXPO_PUBLIC_API_URL=${{ secrets.EXPO_PUBLIC_API_URL }}" >> .env
+          echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
+          echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}" >> .env
+
+      - name: Determine build profile
+        id: profile
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.profile }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "name=preview" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/development" ]; then
+            echo "name=development" >> $GITHUB_OUTPUT
+          else
+            echo "name=preview" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build on EAS
+        id: build
+        run: |
+          BUILD_OUTPUT=$(eas build --platform android --profile ${{ steps.profile.outputs.name }} --non-interactive --wait --json 2>/dev/null || echo "[]")
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id // empty')
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build ID: $BUILD_ID"
+
+      - name: Comment build URL on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📱 **EAS Build Completed!**\n\n- **Profile:** ${{ steps.profile.outputs.name }}\n- **Build ID:** ${{ steps.build.outputs.build_id }}\n\nCheck the [EAS dashboard](https://expo.dev/accounts/${{ secrets.EXPO_ACCOUNT }}/projects/aaro360/builds) for details.`
+            });
+
+  submit:
+    name: Submit to Google Play
+    needs: build
+    runs-on: ubuntu-latest
+    if: |
+      always() && 
+      needs.build.result == 'success' && 
+      needs.build.outputs.profile != 'development' &&
+      (
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.submit == 'true') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')))
+      )
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Submit to Google Play (Internal Track)
+        run: |
+          if [ -n "${{ needs.build.outputs.build_id }}" ]; then
+            eas submit --platform android --profile preview --id ${{ needs.build.outputs.build_id }} --non-interactive
+          else
+            echo "No build ID found, submitting latest build"
+            eas submit --platform android --profile preview --latest --non-interactive
+          fi
+
+  notify:
+    name: Notify Status
+    needs: [build, submit]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "EAS Build & Submit ${{ needs.build.result }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*EAS Build & Submit Status*\n\n• **Branch:** ${{ github.ref_name }}\n• **Profile:** ${{ needs.build.outputs.profile }}\n• **Build:** ${{ needs.build.result }}\n• **Submit:** ${{ needs.submit.result || 'skipped' }}\n• **Commit:** ${{ github.sha }}\n• **Actor:** ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true

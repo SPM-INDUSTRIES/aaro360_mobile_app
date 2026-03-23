@@ -11,7 +11,7 @@ import { vendorApi, foodItemApi, foodCategoryApi } from '../../src/lib/api'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Theme } from '../../src/styles/theme'
-import { Skeleton } from '../../src/components/SkeletonLoader'
+import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
 import { useAppSelector } from '../../src/store/store'
 
 const { width: screenWidth } = Dimensions.get('window')
@@ -264,15 +264,17 @@ try {
 
     if (loading && specialOffers.length === 0) {
       return (
-        <View style={styles.specialOffersSection}>
-          <View style={styles.sectionHeader}>
-            <Skeleton width={150} height={20} />
-            <Skeleton width={60} height={16} />
+        <SkeletonProvider>
+          <View style={styles.specialOffersSection}>
+            <View style={styles.sectionHeader}>
+              <Skeleton width={150} height={20} />
+              <Skeleton width={60} height={16} />
+            </View>
+            <View style={{ paddingHorizontal: 20 }}>
+              <Skeleton width={screenWidth - 40} height={180} borderRadius={Theme.borderRadius.xl} />
+            </View>
           </View>
-          <View style={{ paddingHorizontal: 20 }}>
-            <Skeleton width={screenWidth - 40} height={180} borderRadius={Theme.borderRadius.xl} />
-          </View>
-        </View>
+        </SkeletonProvider>
       )
     }
 

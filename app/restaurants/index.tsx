@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Theme } from '../../src/styles/theme'
 import { ProductCategory } from '../../src/types/product'
-import { Skeleton } from '../../src/components/SkeletonLoader'
+import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -59,23 +60,25 @@ export default function AllRestaurantsScreen() {
 
   const renderSkeleton = () => {
     return (
-      <View>
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={styles.restaurantCard}>
-            <Skeleton height={160} borderRadius={0} />
-            <View style={styles.restaurantInfo}>
-              <View style={styles.logoContainer}>
-                <Skeleton width={60} height={60} borderRadius={30} />
-              </View>
-              <View style={styles.restaurantDetails}>
-                <Skeleton width="60%" height={20} style={{ marginBottom: 10 }} />
-                <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
-                <Skeleton width="40%" height={14} />
+      <SkeletonProvider>
+        <View>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={styles.restaurantCard}>
+              <Skeleton height={160} borderRadius={0} />
+              <View style={styles.restaurantInfo}>
+                <View style={styles.logoContainer}>
+                  <Skeleton width={60} height={60} borderRadius={30} />
+                </View>
+                <View style={styles.restaurantDetails}>
+                  <Skeleton width="60%" height={20} style={{ marginBottom: 10 }} />
+                  <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
+                  <Skeleton width="40%" height={14} />
+                </View>
               </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </SkeletonProvider>
     )
   }
 
@@ -182,6 +185,7 @@ export default function AllRestaurantsScreen() {
           </>
         )}
       </ScrollView>
+      <FloatingCartButton />
     </SafeAreaView>
   )
 }
