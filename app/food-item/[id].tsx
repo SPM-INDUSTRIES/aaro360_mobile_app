@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppDispatch } from "../../src/store/store";
 import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
-import { Skeleton } from "../../src/components/SkeletonLoader";
+import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
 import { foodItemApi } from "../../src/lib/api";
@@ -168,9 +168,10 @@ export default function FoodItemDetailScreen() {
     }
 
     // Get restaurant ID
-    const restaurantId = foodItem.restaurant?.id
-      ? parseInt(foodItem.restaurant.id)
+    const parsedRestaurantId = foodItem.restaurant?.id
+      ? parseInt(String(foodItem.restaurant.id), 10)
       : undefined;
+    const validRestaurantId = parsedRestaurantId && !isNaN(parsedRestaurantId) ? parsedRestaurantId : undefined;
 
     // Add item to cart with quantity - floating cart button will show count
     dispatch(
@@ -180,7 +181,7 @@ export default function FoodItemDetailScreen() {
         itemType: itemType,
         quantity: quantity,
         unitPrice: Number(unitPrice),
-        restaurantId: restaurantId,
+        restaurantId: validRestaurantId,
       }),
     )
       .unwrap()
@@ -191,50 +192,52 @@ export default function FoodItemDetailScreen() {
 
   const renderSkeleton = () => {
     return (
-      <View style={styles.container}>
-        <Skeleton height={300} borderRadius={0} />
-        <View style={styles.infoContainer}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleContainer}>
-              <Skeleton width="70%" height={28} style={{ marginBottom: 8 }} />
-              <Skeleton width="40%" height={16} />
+      <SkeletonProvider>
+        <View style={styles.container}>
+          <Skeleton height={300} borderRadius={0} />
+          <View style={styles.infoContainer}>
+            <View style={styles.headerRow}>
+              <View style={styles.titleContainer}>
+                <Skeleton width="70%" height={28} style={{ marginBottom: 8 }} />
+                <Skeleton width="40%" height={16} />
+              </View>
+              <Skeleton width={80} height={28} />
             </View>
-            <Skeleton width={80} height={28} />
-          </View>
 
-          <Skeleton width="100%" height={16} style={{ marginBottom: 8 }} />
-          <Skeleton width="100%" height={16} style={{ marginBottom: 20 }} />
+            <Skeleton width="100%" height={16} style={{ marginBottom: 8 }} />
+            <Skeleton width="100%" height={16} style={{ marginBottom: 20 }} />
 
-          <View style={styles.restaurantCard}>
-            <Skeleton
-              width={50}
-              height={50}
-              borderRadius={25}
-              style={{ marginRight: 12 }}
-            />
-            <View style={{ flex: 1 }}>
-              <Skeleton width="60%" height={18} style={{ marginBottom: 4 }} />
-              <Skeleton width="80%" height={14} />
+            <View style={styles.restaurantCard}>
+              <Skeleton
+                width={50}
+                height={50}
+                borderRadius={25}
+                style={{ marginRight: 12 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Skeleton width="60%" height={18} style={{ marginBottom: 4 }} />
+                <Skeleton width="80%" height={14} />
+              </View>
             </View>
-          </View>
 
-          <Skeleton width={150} height={20} style={{ marginBottom: 15 }} />
-          <View style={styles.variantsContainer}>
-            <Skeleton width={120} height={60} borderRadius={12} />
-            <Skeleton width={120} height={60} borderRadius={12} />
-          </View>
-
-          <View style={{ marginTop: 25 }}>
             <Skeleton width={150} height={20} style={{ marginBottom: 15 }} />
-            <Skeleton
-              height={50}
-              borderRadius={12}
-              style={{ marginBottom: 10 }}
-            />
-            <Skeleton height={50} borderRadius={12} />
+            <View style={styles.variantsContainer}>
+              <Skeleton width={120} height={60} borderRadius={12} />
+              <Skeleton width={120} height={60} borderRadius={12} />
+            </View>
+
+            <View style={{ marginTop: 25 }}>
+              <Skeleton width={150} height={20} style={{ marginBottom: 15 }} />
+              <Skeleton
+                height={50}
+                borderRadius={12}
+                style={{ marginBottom: 10 }}
+              />
+              <Skeleton height={50} borderRadius={12} />
+            </View>
           </View>
         </View>
-      </View>
+      </SkeletonProvider>
     );
   };
 

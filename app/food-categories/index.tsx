@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Theme } from '../../src/styles/theme'
 import { ProductCategory } from '../../src/types/product'
-import { Skeleton } from '../../src/components/SkeletonLoader'
+import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
+import FloatingCartButton from '../../src/components/FloatingCartButton'
 import { foodCategoryApi } from '../../src/lib/api'
 
 const { width: screenWidth } = Dimensions.get('window')
@@ -51,18 +52,20 @@ export default function FoodCategoriesScreen() {
 
   const renderSkeleton = () => {
     return (
-      <View style={styles.grid}>
-        {[1, 2, 4, 5, 6].map((i) => (
-          <View key={i} style={styles.categoryCard}>
-            <Skeleton height={120} borderRadius={0} />
-            <View style={styles.categoryInfo}>
-              <Skeleton width="60%" height={16} style={{ marginBottom: 8 }} />
-              <Skeleton width="90%" height={12} style={{ marginBottom: 4 }} />
-              <Skeleton width="80%" height={12} />
+      <SkeletonProvider>
+        <View style={styles.grid}>
+          {[1, 2, 4, 5, 6].map((i) => (
+            <View key={i} style={styles.categoryCard}>
+              <Skeleton height={120} borderRadius={0} />
+              <View style={styles.categoryInfo}>
+                <Skeleton width="60%" height={16} style={{ marginBottom: 8 }} />
+                <Skeleton width="90%" height={12} style={{ marginBottom: 4 }} />
+                <Skeleton width="80%" height={12} />
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </SkeletonProvider>
     )
   }
 
@@ -134,6 +137,7 @@ export default function FoodCategoriesScreen() {
           </>
         )}
       </ScrollView>
+      <FloatingCartButton />
     </SafeAreaView>
   )
 }

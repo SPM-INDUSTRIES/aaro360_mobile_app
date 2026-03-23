@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppDispatch } from "../../src/store/store";
 import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
-import { Skeleton } from "../../src/components/SkeletonLoader";
+import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
 import ImageWithFallback from "../../src/components/ImageWithFallback";
@@ -66,10 +66,16 @@ export default function ProductDetailScreen() {
     }
 
     const unitPrice = product.discountPrice ?? product.price;
+    const parsedItemId = parseInt(productId, 10);
+
+    if (isNaN(parsedItemId)) {
+      Alert.alert("Error", "Invalid product ID");
+      return;
+    }
 
     dispatch(
       addItemToCart({
-        itemId: parseInt(productId, 10),
+        itemId: parsedItemId,
         itemName: product.name,
         itemType,
         quantity,
@@ -84,15 +90,17 @@ export default function ProductDetailScreen() {
   };
 
   const renderSkeleton = () => (
-    <View style={styles.container}>
-      <Skeleton height={300} borderRadius={0} />
-      <View style={styles.infoContainer}>
-        <Skeleton width="70%" height={28} style={{ marginBottom: 8 }} />
-        <Skeleton width="40%" height={16} style={{ marginBottom: 16 }} />
-        <Skeleton width="100%" height={60} style={{ marginBottom: 16 }} />
-        <Skeleton width={150} height={44} />
+    <SkeletonProvider>
+      <View style={styles.container}>
+        <Skeleton height={300} borderRadius={0} />
+        <View style={styles.infoContainer}>
+          <Skeleton width="70%" height={28} style={{ marginBottom: 8 }} />
+          <Skeleton width="40%" height={16} style={{ marginBottom: 16 }} />
+          <Skeleton width="100%" height={60} style={{ marginBottom: 16 }} />
+          <Skeleton width={150} height={44} />
+        </View>
       </View>
-    </View>
+    </SkeletonProvider>
   );
 
   if (loading) {
