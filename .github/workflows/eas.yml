@@ -15,22 +15,11 @@ on:
           - development
           - preview
           - production
-      submit:
-        description: 'Submit to Google Play after build'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
 
 jobs:
   build:
-    name: Build
+    name: Build & Submit
     runs-on: ubuntu-latest
-    outputs:
-      build_id: ${{ steps.build.outputs.build_id }}
-      profile: ${{ steps.profile.outputs.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,53 +56,21 @@ jobs:
           fi
 
       - name: Build on EAS
-        id: build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          BUILD_OUTPUT=$(eas build --platform android --profile ${{ steps.profile.outputs.name }} --non-interactive --wait --json 2>/dev/null || echo "[]")
-          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id // empty')
-          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-          echo "Build ID: $BUILD_ID"
+          eas build --platform android --profile ${{ steps.profile.outputs.name }} --non-interactive --wait
 
-  submit:
-    name: Submit to Google Play
-    needs: build
-    runs-on: ubuntu-latest
-    if: |
-      always() && 
-      needs.build.result == 'success' && 
-      needs.build.outputs.profile != 'development' &&
-      (
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.submit == 'true') ||
-        (github.event_name == 'push' && github.ref == 'refs/heads/main')
-      )
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install EAS CLI
-        run: npm install -g eas-cli@18.4.0
-
-      - name: Submit to Google Play (Internal Track)
+      - name: Submit to Google Play
+        if: steps.profile.outputs.name != 'development'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          if [ -n "${{ needs.build.outputs.build_id }}" ]; then
-            eas submit --platform android --profile preview --id ${{ needs.build.outputs.build_id }} --non-interactive
-          else
-            echo "No build ID found, submitting latest build"
-            eas submit --platform android --profile preview --latest --non-interactive
-          fi
+          eas submit --platform android --profile preview --latest --non-interactive
 
   notify:
     name: Notify Status
-    needs: [build, submit]
+    needs: build
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -128,7 +85,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*EAS Build & Submit Status*\n\n• **Branch:** ${{ github.ref_name }}\n• **Profile:** ${{ needs.build.outputs.profile }}\n• **Build:** ${{ needs.build.result }}\n• **Submit:** ${{ needs.submit.result || 'skipped' }}\n• **Commit:** ${{ github.sha }}\n• **Actor:** ${{ github.actor }}"
+                    "text": "*EAS Build & Submit Status*\n\n• **Branch:** ${{ github.ref_name }}\n• **Build:** ${{ needs.build.result }}\n• **Commit:** ${{ github.sha }}\n• **Actor:** ${{ github.actor }}"
                   }
                 }
               ]
