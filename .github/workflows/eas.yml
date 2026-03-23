@@ -39,15 +39,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: 18.4.0
-          token: ${{ secrets.EXPO_TOKEN }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@latest
 
       - name: Install dependencies
         run: npm ci
@@ -74,6 +68,8 @@ jobs:
 
       - name: Build on EAS
         id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           BUILD_OUTPUT=$(eas build --platform android --profile ${{ steps.profile.outputs.name }} --non-interactive --wait --json 2>/dev/null || echo "[]")
           BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id // empty')
@@ -96,15 +92,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          eas-version: 18.4.0
-          token: ${{ secrets.EXPO_TOKEN }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          node-version: 20
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@18.4.0
 
       - name: Submit to Google Play (Internal Track)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -n "${{ needs.build.outputs.build_id }}" ]; then
             eas submit --platform android --profile preview --id ${{ needs.build.outputs.build_id }} --non-interactive
