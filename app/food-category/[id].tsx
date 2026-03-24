@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
 import { Theme } from '../../src/styles/theme'
+import { rs, rf, wp, hp } from '../../src/utils/responsive'
 import { useDebounce } from '../../src/hooks/useDebounce'
 import { foodCategoryApi, foodItemApi, FoodItemFilters } from '../../src/lib/api'
 
@@ -378,19 +379,19 @@ const styles = StyleSheet.create({
   },
   categoryImage: {
     width: '100%',
-    height: 220,
+    height: hp(25),
   },
   categoryInfo: {
     padding: 20,
   },
   categoryName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 8,
   },
   categoryDescription: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
   },
   filtersContainer: {
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#000',
   },
   priceFilters: {
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterLabel: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     marginRight: 10,
   },
@@ -427,7 +428,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
   },
   priceSeparator: {
     marginHorizontal: 8,
@@ -439,7 +440,7 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   itemsTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
     color: '#000',
   },
@@ -480,18 +481,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   foodName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 4,
   },
   restaurantName: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#124569',
     marginBottom: 4,
   },
   foodDescription: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#666',
     marginBottom: 8,
   },
@@ -501,7 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   foodPrice: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
     color: '#124569',
   },
@@ -518,13 +519,13 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '600',
     color: '#666',
     marginTop: 15,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#999',
     marginTop: 5,
   },
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
   },
   dataLoadingText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     fontWeight: '500',
   },
@@ -553,7 +554,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     fontWeight: '500',
   },
@@ -562,7 +563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   endOfListText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#999',
     fontWeight: '500',
   },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useAppDispatch } from "../../src/store/store";
 import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 import AddToCartModal from "../../src/components/AddToCartModal";
 import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
@@ -69,6 +70,113 @@ interface Restaurant {
   phone?: string;
 }
 
+const CategoryTabs = ({ 
+  categories, 
+  selectedCategory, 
+  onSelectCategory 
+}: { 
+  categories: FoodCategory[]; 
+  selectedCategory: string; 
+  onSelectCategory: (id: string) => void;
+}) => {
+  return (
+    <View style={styles.categoryFilterContainer}>
+      <Text style={styles.filterLabel}>Categories</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriesScrollContent}
+      >
+        <TouchableOpacity
+          style={[styles.categoryTab, selectedCategory === "" && styles.categoryTabActive]}
+          onPress={() => onSelectCategory("")}
+        >
+          <Text style={[styles.categoryTabText, selectedCategory === "" && styles.categoryTabTextActive]}>
+            All
+          </Text>
+        </TouchableOpacity>
+        {categories.map((cat) => (
+          <TouchableOpacity
+            key={cat.id}
+            style={[
+              styles.categoryTab,
+              selectedCategory === cat.id.toString() && styles.categoryTabActive,
+            ]}
+            onPress={() => onSelectCategory(cat.id.toString())}
+          >
+            <Text
+              style={[
+                styles.categoryTabText,
+                selectedCategory === cat.id.toString() && styles.categoryTabTextActive,
+              ]}
+            >
+              {cat.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const FiltersSection = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  minPrice, 
+  setMinPrice, 
+  maxPrice, 
+  setMaxPrice, 
+  priceError 
+}: { 
+  searchQuery: string; 
+  setSearchQuery: (v: string) => void; 
+  minPrice: string; 
+  setMinPrice: (v: string) => void; 
+  maxPrice: string; 
+  setMaxPrice: (v: string) => void; 
+  priceError: string;
+}) => {
+  return (
+    <View style={styles.filtersContainer}>
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={20} color="#666" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search menu..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      <View style={styles.filterRow}>
+        <View style={styles.filterItem}>
+          <Text style={styles.filterLabel}>Price Range</Text>
+          <View style={styles.priceFilters}>
+            <TextInput
+              style={styles.priceInput}
+              placeholder="Min"
+              value={minPrice}
+              onChangeText={setMinPrice}
+              keyboardType="numeric"
+            />
+            <Text style={styles.priceSeparator}>-</Text>
+            <TextInput
+              style={styles.priceInput}
+              placeholder="Max"
+              value={maxPrice}
+              onChangeText={setMaxPrice}
+              keyboardType="numeric"
+            />
+          </View>
+          {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+
+
 export default function RestaurantDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -78,6 +186,7 @@ export default function RestaurantDetailScreen() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<FoodCategory[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -114,6 +223,17 @@ export default function RestaurantDetailScreen() {
   useEffect(() => {
     fetchFoodItems(1, false);
   }, [restaurantId, debouncedSearchQuery, selectedCategory, debouncedMinPrice, debouncedMaxPrice]);
+
+  // Filter categories to only show those with items in this restaurant
+  useEffect(() => {
+    if (foodItems.length > 0 && categories.length > 0) {
+      const categoryIds = new Set(foodItems.map(item => item.category?.id).filter(Boolean));
+      const filtered = categories.filter(cat => categoryIds.has(cat.id));
+      setAvailableCategories(filtered);
+    } else {
+      setAvailableCategories([]);
+    }
+  }, [foodItems, categories]);
 
   useEffect(() => {
     fetchRestaurantAndCategories();
@@ -374,122 +494,11 @@ export default function RestaurantDetailScreen() {
 
   const ListHeader = useCallback(
     () => (
-      <>
-        {restaurant && (
-          <View style={styles.restaurantHeader}>
-            <View style={styles.restaurantInfo}>
-              <View style={styles.logoContainer}>
-                {restaurant.logoUrl ? (
-                  <Image
-                    source={{
-                      uri: resolveImageUrl(restaurant.logoUrl) ?? restaurant.logoUrl,
-                    }}
-                    style={styles.logo}
-                  />
-                ) : (
-                  <View style={[styles.logo, styles.placeholderLogo]}>
-                    <Text style={styles.logoEmoji}>{restaurant.name.charAt(0)}</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.restaurantDetails}>
-                <Text style={styles.restaurantName}>{restaurant.name}</Text>
-                {restaurant.address && (
-                  <View style={styles.metaRow}>
-                    <Ionicons name="location-outline" size={14} color={Theme.colors.textGray} />
-                    <Text style={styles.restaurantAddress}>{restaurant.address}</Text>
-                  </View>
-                )}
-                {restaurant.phone && (
-                  <View style={styles.metaRow}>
-                    <Ionicons name="call-outline" size={14} color={Theme.colors.textGray} />
-                    <Text style={styles.restaurantPhone}>{restaurant.phone}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.filtersContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#666" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search menu..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <View style={styles.categoryFilterContainer}>
-            <Text style={styles.filterLabel}>Categories</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesScrollContent}
-            >
-              <TouchableOpacity
-                style={[styles.categoryTab, selectedCategory === "" && styles.categoryTabActive]}
-                onPress={() => setSelectedCategory("")}
-              >
-                <Text style={[styles.categoryTabText, selectedCategory === "" && styles.categoryTabTextActive]}>
-                  All
-                </Text>
-              </TouchableOpacity>
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryTab,
-                    selectedCategory === cat.id.toString() && styles.categoryTabActive,
-                  ]}
-                  onPress={() => setSelectedCategory(cat.id.toString())}
-                >
-                  <Text
-                    style={[
-                      styles.categoryTabText,
-                      selectedCategory === cat.id.toString() && styles.categoryTabTextActive,
-                    ]}
-                  >
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={styles.filterRow}>
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Price Range</Text>
-              <View style={styles.priceFilters}>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Min"
-                  value={minPrice}
-                  onChangeText={setMinPrice}
-                  keyboardType="numeric"
-                />
-                <Text style={styles.priceSeparator}>-</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Max"
-                  value={maxPrice}
-                  onChangeText={setMaxPrice}
-                  keyboardType="numeric"
-                />
-              </View>
-              {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.menuTitleContainer}>
-          <Text style={styles.menuTitle}>Menu ({totalItems})</Text>
-        </View>
-      </>
+      <View style={styles.menuTitleContainer}>
+        <Text style={styles.menuTitle}>Menu ({totalItems})</Text>
+      </View>
     ),
-    [restaurant, searchQuery, selectedCategory, categories, minPrice, maxPrice, priceError, totalItems],
+    [totalItems],
   );
 
   const ListFooter = useCallback(
@@ -535,19 +544,92 @@ export default function RestaurantDetailScreen() {
     [loading],
   );
 
+  if (initialLoading) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: false,
+          }}
+        />
+        {renderSkeleton()}
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: restaurant?.name || (initialLoading ? "Loading..." : "Restaurant"),
-          headerStyle: { backgroundColor: "#FFFFFF" },
-          headerTintColor: Theme.colors.deepBlue,
-          headerTitleStyle: { fontWeight: "800" },
+          headerShown: false,
         }}
       />
-      {initialLoading ? (
-        renderSkeleton()
-      ) : (
+      
+      <View style={styles.container}>
+        {/* Restaurant Header - Outside FlatList */}
+        {restaurant && (
+          <View style={styles.restaurantHeader}>
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
+            </TouchableOpacity>
+            <View style={styles.restaurantInfo}>
+              <View style={styles.logoContainer}>
+                {restaurant.logoUrl ? (
+                  <Image
+                    source={{
+                      uri: resolveImageUrl(restaurant.logoUrl) ?? restaurant.logoUrl,
+                    }}
+                    style={styles.logo}
+                  />
+                ) : (
+                  <View style={[styles.logo, styles.placeholderLogo]}>
+                    <Text style={styles.logoEmoji}>{restaurant.name.charAt(0)}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.restaurantDetails}>
+                <Text style={styles.restaurantName}>{restaurant.name}</Text>
+                {restaurant.address && (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={14} color={Theme.colors.textGray} />
+                    <Text style={styles.restaurantAddress}>{restaurant.address}</Text>
+                  </View>
+                )}
+                {restaurant.phone && (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="call-outline" size={14} color={Theme.colors.textGray} />
+                    <Text style={styles.restaurantPhone}>{restaurant.phone}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Category Tabs - Outside FlatList to maintain scroll position */}
+        <View style={styles.stickyCategoryContainer}>
+          <CategoryTabs
+            categories={availableCategories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        </View>
+
+        {/* Filters - Outside FlatList to maintain input focus */}
+        <FiltersSection
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          minPrice={minPrice}
+          setMinPrice={setMinPrice}
+          maxPrice={maxPrice}
+          setMaxPrice={setMaxPrice}
+          priceError={priceError}
+        />
+
         <FlatList
           data={foodItems}
           keyExtractor={(item) => item.id.toString()}
@@ -561,8 +643,10 @@ export default function RestaurantDetailScreen() {
           onRefresh={handleRefresh}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          style={styles.flatList}
         />
-      )}
+      </View>
+
       <AddToCartModal
         visible={showAddToCartModal}
         onClose={() => setShowAddToCartModal(false)}
@@ -577,12 +661,29 @@ export default function RestaurantDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#FFFFFF",
+  },
+  flatList: {
+    flex: 1,
+  },
+  stickyCategoryContainer: {
+    backgroundColor: "#FFFFFF",
   },
   restaurantHeader: {
     backgroundColor: "#FFFFFF",
     marginBottom: 10,
     overflow: "hidden",
+    paddingTop: 10,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 15,
+    marginBottom: 10,
   },
   restaurantInfo: {
     flexDirection: "row",
@@ -590,17 +691,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     marginRight: 15,
     backgroundColor: "#FFFFFF",
     ...Theme.shadows.small,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
   },
   placeholderLogo: {
     backgroundColor: Theme.colors.blueLight,
@@ -616,7 +717,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "bold",
     color: "#000",
     marginBottom: 5,
@@ -628,47 +729,53 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   restaurantAddress: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     flex: 1,
   },
   restaurantPhone: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
   },
   filtersContainer: {
     backgroundColor: "#FFFFFF",
     padding: 15,
-    marginBottom: 10,
+    paddingBottom: 20,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    minHeight: 44,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#000",
   },
   filterRow: {
     flexDirection: "row",
     gap: 10,
+    paddingBottom: 5,
   },
   filterItem: {
     flex: 1,
   },
   filterLabel: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: "#666",
     marginBottom: 8,
   },
   categoryFilterContainer: {
-    marginBottom: 15,
+    padding: 15,
+    paddingBottom: 0,
   },
   categoriesScrollContent: {
     paddingRight: 20,
@@ -698,15 +805,17 @@ const styles = StyleSheet.create({
   priceFilters: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
   },
   priceInput: {
+    height: 48,
     flex: 1,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "#D0D0D0",
     borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    fontSize: rf(Theme.fontSize.md),
+    backgroundColor: "#FFFFFF",
+    textAlignVertical: "center",
   },
   priceSeparator: {
     marginHorizontal: 8,
@@ -716,9 +825,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 15,
     paddingBottom: 5,
+    backgroundColor: "#FFFFFF",
   },
   menuTitle: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: "bold",
     color: "#000",
   },
@@ -739,8 +849,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   foodImage: {
-    width: 120,
-    height: 120,
+    width: rs(120),
+    height: rs(120),
   },
   placeholderImage: {
     backgroundColor: "#F5F5F5",
@@ -752,21 +862,21 @@ const styles = StyleSheet.create({
   },
   foodInfo: {
     flex: 1,
-    padding: 12,
+    padding: 14,
   },
   foodName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: "bold",
     color: "#000",
     marginBottom: 4,
   },
   foodCategory: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: "#124569",
     marginBottom: 4,
   },
   foodDescription: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: "#666",
     marginBottom: 8,
   },
@@ -784,7 +894,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   foodPrice: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
     color: "#124569",
   },
@@ -801,20 +911,20 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "600",
     color: "#666",
     marginTop: 15,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     marginTop: 5,
   },
   errorText: {
     color: "#DC2626",
-    fontSize: 10,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 6,
     fontWeight: "600",
   },
   dataLoadingContainer: {
@@ -824,7 +934,7 @@ const styles = StyleSheet.create({
   },
   dataLoadingText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     fontWeight: "500",
   },
@@ -835,7 +945,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     fontWeight: "500",
   },
@@ -844,7 +954,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   endOfListText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     fontWeight: "500",
   },

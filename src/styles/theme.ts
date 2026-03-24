@@ -40,11 +40,26 @@ export const Colors: ThemeColors = {
 
 export const Theme = {
     colors: Colors,
+    fontSize: {
+        xs: 10,
+        sm: 12,
+        md: 14,
+        base: 16,
+        lg: 18,
+        xl: 20,
+        xxl: 24,
+        xxxl: 28,
+        display: 32,
+        hero: 40,
+    },
     borderRadius: {
-        sm: 4,
+        xs: 4,
+        sm: 6,
         md: 8,
-        lg: 16,
-        xl: 24,
+        lg: 12,
+        xl: 16,
+        xxl: 20,
+        xxxl: 24,
         full: 9999,
     },
     shadows: {
@@ -62,14 +77,45 @@ export const Theme = {
             shadowRadius: 10,
             elevation: 5,
         },
+        large: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.15,
+            shadowRadius: 15,
+            elevation: 8,
+        },
     },
     spacing: {
         xs: 4,
         sm: 8,
-        md: 16,
+        md: 12,
+        base: 16,
         lg: 20,
         xl: 24,
         xxl: 32,
-    }
+        xxxl: 40,
+        section: 48,
+    },
+    touchTarget: {
+        small: 36,
+        medium: 44,
+        large: 52,
+    },
+    iconSize: {
+        xs: 16,
+        sm: 20,
+        md: 24,
+        lg: 32,
+        xl: 40,
+        xxl: 48,
+    },
+    avatarSize: {
+        xs: 24,
+        sm: 32,
+        md: 40,
+        lg: 50,
+        xl: 64,
+        xxl: 80,
+        xxxl: 100,
+    },
 }
-

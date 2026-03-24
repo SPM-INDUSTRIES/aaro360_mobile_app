@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Theme } from '../../src/styles/theme'
 import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
 import { useAppSelector } from '../../src/store/store'
+import { rs, rf, wp, hp, screen } from '../../src/utils/responsive'
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -728,13 +729,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   logoImage: {
-    width: 120,
-    height: 60,
+    width: rs(120),
+    height: rs(60),
   },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: Theme.touchTarget.medium,
+    height: Theme.touchTarget.medium,
+    borderRadius: Theme.touchTarget.medium / 2,
     backgroundColor: Theme.colors.white,
     justifyContent: 'center',
     alignItems: 'center',
@@ -757,14 +758,14 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     color: Theme.colors.textGray,
-    fontSize: 15,
+    fontSize: rf(15),
     fontWeight: '500',
   },
   content: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
   },
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     color: Theme.colors.primary,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '600',
   },
   topCategoriesSection: {
@@ -791,14 +792,14 @@ const styles = StyleSheet.create({
   categoryCard: {
     alignItems: 'center',
     marginRight: 16,
-    width: 85,
+    width: rs(85),
   },
   categoryCardActive: {
     // Active state styling handled in icon container
   },
   categoryIconContainer: {
-    width: 65,
-    height: 65,
+    width: rs(65),
+    height: rs(65),
     borderRadius: Theme.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -814,10 +815,10 @@ const styles = StyleSheet.create({
     ...Theme.shadows.medium,
   },
   categoryIcon: {
-    fontSize: 28,
+    fontSize: rf(28),
   },
   categoryName: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '700',
     color: Theme.colors.deepBlue,
     textAlign: 'center',
@@ -827,11 +828,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   offersCarousel: {
-    height: 180,
+    height: hp(22),
   },
   offerCard: {
-    width: screenWidth - 60,
-    height: 180,
+    width: wp(88),
+    height: hp(22),
     borderRadius: Theme.borderRadius.xl,
     overflow: 'hidden',
     marginRight: 15,
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
   offerBadgeText: {
     color: Theme.colors.white,
     fontWeight: '900',
-    fontSize: 10,
+    fontSize: rf(Theme.fontSize.xs),
     letterSpacing: 0.5,
   },
   offerImage: {
@@ -877,13 +878,13 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   offerTitle: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontWeight: '900',
     color: Theme.colors.white,
     marginBottom: 4,
   },
   offerDescription: {
-    fontSize: 13,
+    fontSize: rf(13),
     color: '#E0E7FF',
     fontWeight: '500',
     marginBottom: 12,
@@ -898,7 +899,7 @@ const styles = StyleSheet.create({
   claimButtonText: {
     color: Theme.colors.deepBlue,
     fontWeight: '800',
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
   },
   offerIndicators: {
     flexDirection: 'row',
@@ -922,7 +923,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderEmoji: {
-    fontSize: 40,
+    fontSize: rs(40),
   },
   foodCategoriesSection: {
     paddingHorizontal: 20,
@@ -934,7 +935,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   foodCategoryCard: {
-    width: (screenWidth - 55) / 2,
+    width: '48%',
     backgroundColor: Theme.colors.white,
     borderRadius: 16,
     marginBottom: 16,
@@ -945,7 +946,7 @@ const styles = StyleSheet.create({
   },
   foodCategoryImageContainer: {
     width: '100%',
-    height: 110,
+    height: rs(110),
     backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
@@ -956,10 +957,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   foodCategoryIcon: {
-    fontSize: 40,
+    fontSize: rs(40),
   },
   foodCategoryName: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '700',
     color: Theme.colors.textDark,
     textAlign: 'center',
@@ -974,13 +975,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   brandCard: {
-    width: 85,
+    width: rs(85),
     marginRight: 20,
     alignItems: 'center',
   },
   brandLogo: {
-    width: 80,
-    height: 80,
+    width: rs(80),
+    height: rs(80),
     borderRadius: Theme.borderRadius.xl,
     marginBottom: 8,
   },
@@ -990,7 +991,7 @@ const styles = StyleSheet.create({
     color: Theme.colors.deepBlue,
   },
   brandName: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '700',
     color: Theme.colors.textDark,
     textAlign: 'center',
@@ -1010,8 +1011,8 @@ const styles = StyleSheet.create({
     borderColor: Theme.colors.border,
   },
   allOfferImage: {
-    width: 100,
-    height: 100,
+    width: rs(100),
+    height: rs(100),
     borderRadius: Theme.borderRadius.lg,
     backgroundColor: Theme.colors.backgroundLight,
   },
@@ -1021,13 +1022,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   allOfferName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
     marginBottom: 4,
   },
   allOfferSubtext: {
-    fontSize: 13,
+    fontSize: rf(13),
     color: Theme.colors.textGray,
     marginBottom: 8,
     fontWeight: '600',
@@ -1045,7 +1046,7 @@ const styles = StyleSheet.create({
   },
   newTagText: {
     color: '#D97706',
-    fontSize: 10,
+    fontSize: rf(Theme.fontSize.xs),
     fontWeight: 'bold',
   },
   locationsTag: {
@@ -1056,7 +1057,7 @@ const styles = StyleSheet.create({
   },
   locationsTagText: {
     color: '#4338CA',
-    fontSize: 10,
+    fontSize: rf(Theme.fontSize.xs),
     fontWeight: 'bold',
   },
   allOfferCategory: {
@@ -1088,11 +1089,11 @@ const styles = StyleSheet.create({
   },
   paginationButtonText: {
     color: Theme.colors.deepBlue,
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '700',
   },
   paginationText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
     fontWeight: '600',
   },
@@ -1116,7 +1117,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   hospitalImage: {
-    width: 120,
+    width: rs(120),
     height: 120,
   },
   hospitalInfo: {
@@ -1131,7 +1132,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   hospitalAddress: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     marginBottom: 12,
   },
@@ -1148,7 +1149,7 @@ const styles = StyleSheet.create({
   callButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
   },
   loader: {
     marginVertical: 40,
@@ -1158,7 +1159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#666',
   },
   comingSoonContainer: {
@@ -1180,7 +1181,7 @@ const styles = StyleSheet.create({
     borderRadius: Theme.borderRadius.xl,
   },
   comingSoonTitle: {
-    fontSize: 28,
+    fontSize: rf(28),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
     textAlign: 'center',
@@ -1188,7 +1189,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   comingSoonSubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
     textAlign: 'center',
     lineHeight: 22,
@@ -1208,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   notifyButtonText: {
     color: Theme.colors.white,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '700',
   },
   headerAvatar: {

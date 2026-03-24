@@ -14,6 +14,7 @@ import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
 import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
 import ImageWithFallback from "../../src/components/ImageWithFallback";
 import { productApi } from "../../src/lib/productApi";
@@ -237,13 +238,13 @@ const styles = StyleSheet.create({
   soldOutText: { color: "#FFF", fontSize: 24, fontWeight: "700" },
   infoContainer: { padding: 20 },
   productName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "800",
     color: "#111",
     marginBottom: 4,
   },
   productCategory: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     marginBottom: 12,
     textTransform: "capitalize",
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
   },
   price: { fontSize: 22, fontWeight: "700", color: Theme.colors.primary },
   originalPrice: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#999",
     textDecorationLine: "line-through",
   },
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   quantityValue: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "600",
     minWidth: 24,
     textAlign: "center",
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     color: "#666",
     marginTop: 16,
     textAlign: "center",

@@ -23,6 +23,8 @@ import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
 import { useDebounce } from "../../src/hooks/useDebounce";
+import { Theme } from "../../src/styles/theme";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -507,7 +509,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#000000",
     paddingVertical: 12,
   },
@@ -525,7 +527,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   resultsCount: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: "500",
     color: "#666",
     textTransform: "uppercase",
@@ -547,8 +549,8 @@ const styles = StyleSheet.create({
     borderColor: "#F0F0F0",
   },
   productImageContainer: {
-    width: 120,
-    height: 150,
+    width: rs(120),
+    height: rs(150),
     backgroundColor: "#F8F8F8",
   },
   productImage: {
@@ -604,21 +606,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   productPrice: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "700",
     color: "#124569",
   },
   productOriginalPrice: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     textDecorationLine: "line-through",
     fontWeight: "400",
   },
   addButton: {
     backgroundColor: "#f27424",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: Theme.touchTarget.medium,
+    height: Theme.touchTarget.medium,
+    borderRadius: Theme.touchTarget.medium / 2,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#f27424",
@@ -645,7 +647,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     fontWeight: "500",
   },
@@ -654,7 +656,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   endOfListText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     fontWeight: "500",
   },

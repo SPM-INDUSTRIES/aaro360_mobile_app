@@ -18,6 +18,7 @@ import { CategoryType } from "../../src/types";
 import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 import { foodItemApi } from "../../src/lib/api";
 
 interface FoodCategory {
@@ -539,7 +540,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     color: "#666",
     marginTop: 15,
     marginBottom: 30,
@@ -552,12 +553,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: "600",
   },
   imageContainer: {
     width: "100%",
-    height: 350,
+    height: hp(40),
     position: "relative",
     backgroundColor: Theme.colors.backgroundLight,
   },
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
   },
   soldOutText: {
     color: "#FFF",
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "bold",
     backgroundColor: "#E53E3E",
     paddingHorizontal: 20,
@@ -606,22 +607,22 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   foodName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
     marginBottom: 5,
   },
   foodCategory: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
   },
   price: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "bold",
     color: Theme.colors.primary,
   },
   description: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#666",
     lineHeight: 24,
     marginBottom: 20,
@@ -640,8 +641,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantLogo: {
-    width: 50,
-    height: 50,
+    width: rs(50),
+    height: rs(50),
     borderRadius: 25,
     marginRight: 12,
   },
@@ -649,20 +650,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: "600",
     color: Theme.colors.deepBlue,
     marginBottom: 4,
   },
   restaurantAddress: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: "#666",
   },
   section: {
     marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
     marginBottom: 15,
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   variantName: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: "600",
     color: Theme.colors.deepBlue,
     marginBottom: 5,
@@ -700,7 +701,7 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   variantPrice: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: "bold",
     color: "#666",
   },
@@ -736,7 +737,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addonName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.deepBlue,
     flex: 1,
   },
@@ -744,7 +745,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   addonPrice: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#666",
     marginLeft: 10,
   },
@@ -759,8 +760,8 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   quantityButton: {
-    width: 40,
-    height: 40,
+    width: Theme.touchTarget.small,
+    height: Theme.touchTarget.small,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: Theme.colors.deepBlue,
@@ -772,7 +773,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   quantityText: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
     minWidth: 40,
@@ -788,12 +789,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   totalLabel: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: "600",
     color: Theme.colors.deepBlue,
   },
   totalPrice: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: "bold",
     color: Theme.colors.primary,
   },
@@ -819,7 +820,7 @@ const styles = StyleSheet.create({
   },
   addToCartText: {
     color: "#FFF",
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
   },
 });

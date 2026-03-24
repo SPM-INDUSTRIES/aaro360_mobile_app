@@ -10,6 +10,7 @@ import {
     Pressable,
 } from 'react-native';
 import { Theme } from '../styles/theme';
+import { rs, rf, wp } from "../utils/responsive";
 import { Ionicons } from '@expo/vector-icons';
 
 interface CustomAlertProps {
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     alertContainer: {
-        width: width * 0.85,
+        width: wp(85),
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         overflow: 'hidden',
@@ -156,15 +157,15 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     iconContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: rs(64),
+        height: rs(64),
+        borderRadius: rs(32),
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
     },
     title: {
-        fontSize: 20,
+        fontSize: rf(Theme.fontSize.xl),
         fontWeight: '800',
         color: Theme.colors.textDark,
         textAlign: 'center',

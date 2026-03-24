@@ -9,6 +9,7 @@ import {
     ScrollView,
     Dimensions,
 } from 'react-native'
+import { rs, rf, wp, hp } from '../utils/responsive'
 import { Ionicons } from '@expo/vector-icons'
 import { Theme } from '../styles/theme'
 import { resolveImageUrl } from '../utils/imageUrl'
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     },
     itemImage: {
         width: '100%',
-        height: 200,
+        height: hp(25),
         borderRadius: 16,
         marginBottom: 16,
     },
@@ -308,13 +309,13 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     itemDescription: {
-        fontSize: 14,
+        fontSize: rf(Theme.fontSize.md),
         color: '#666',
         lineHeight: 20,
         marginBottom: 12,
     },
     basePrice: {
-        fontSize: 20,
+        fontSize: rf(Theme.fontSize.xl),
         fontWeight: '700',
         color: Theme.colors.primary,
     },
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: rf(Theme.fontSize.lg),
         fontWeight: '600',
         color: '#1A1A1A',
         marginBottom: 12,
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     variantName: {
-        fontSize: 16,
+        fontSize: rf(Theme.fontSize.base),
         fontWeight: '500',
         color: '#1A1A1A',
     },
@@ -363,12 +364,12 @@ const styles = StyleSheet.create({
         color: '#999',
     },
     unavailableText: {
-        fontSize: 12,
+        fontSize: rf(Theme.fontSize.sm),
         color: '#999',
         fontStyle: 'italic',
     },
     variantPrice: {
-        fontSize: 16,
+        fontSize: rf(Theme.fontSize.base),
         fontWeight: '600',
         color: '#666',
         marginRight: 8,
@@ -407,8 +408,8 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     checkbox: {
-        width: 24,
-        height: 24,
+        width: rs(24),
+        height: rs(24),
         borderRadius: 6,
         borderWidth: 2,
         borderColor: '#DDD',
@@ -426,8 +427,8 @@ const styles = StyleSheet.create({
         gap: 24,
     },
     quantityButton: {
-        width: 44,
-        height: 44,
+        width: Theme.touchTarget.medium,
+        height: Theme.touchTarget.medium,
         borderRadius: 22,
         borderWidth: 2,
         borderColor: Theme.colors.primary,
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     totalLabel: {
-        fontSize: 18,
+        fontSize: rf(Theme.fontSize.lg),
         fontWeight: '600',
         color: '#666',
     },
@@ -479,7 +480,7 @@ const styles = StyleSheet.create({
     },
     addButtonText: {
         color: '#FFF',
-        fontSize: 18,
+        fontSize: rf(Theme.fontSize.lg),
         fontWeight: 'bold',
     },
 })

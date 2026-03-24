@@ -9,6 +9,8 @@ import { userApi } from '../../src/lib/api'
 import { useCallback } from 'react'
 import { useAlert } from '../../src/context/AlertContext'
 
+import { Theme } from "../../src/styles/theme";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 export default function ProfileScreen() {
   const router = useRouter()
   const dispatch = useAppDispatch()
@@ -201,7 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '800',
     color: '#000000',
   },
@@ -218,17 +220,17 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: rs(100),
+    height: rs(100),
+    borderRadius: rs(50),
     backgroundColor: '#f27424',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: rs(100),
+    height: rs(100),
+    borderRadius: rs(50),
   },
   avatarText: {
     fontSize: 36,
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   phoneText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     marginTop: 2,
   },
@@ -250,17 +252,17 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
   },
   name: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: 'bold',
     color: '#000000',
     marginBottom: 5,
   },
   email: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
   },
   menuItem: {
@@ -276,7 +278,7 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     marginLeft: 15,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#000000',
   },
   logoutItem: {
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     marginLeft: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#4B5563',
     flex: 1,
   },
