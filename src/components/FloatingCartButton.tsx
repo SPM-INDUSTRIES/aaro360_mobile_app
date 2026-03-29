@@ -17,6 +17,7 @@ import { rs, rf, screen } from '../utils/responsive'
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const BUTTON_SIZE = screen.isLarge ? 70 : screen.isMedium ? 60 : 55
 const MARGIN = rs(20)
+const BOTTOM_OFFSET = 160
 
 export default function FloatingCartButton() {
     const router = useRouter()
@@ -28,7 +29,7 @@ export default function FloatingCartButton() {
 
     const pan = useRef(new Animated.ValueXY({
         x: SCREEN_WIDTH - BUTTON_SIZE - MARGIN,
-        y: SCREEN_HEIGHT - BUTTON_SIZE - 200,
+        y: SCREEN_HEIGHT - BUTTON_SIZE - BOTTOM_OFFSET,
     })).current
 
     const panResponder = useMemo(() =>
@@ -55,7 +56,7 @@ export default function FloatingCartButton() {
                 const targetX = snapToLeft ? MARGIN : SCREEN_WIDTH - BUTTON_SIZE - MARGIN
 
                 const minY = 100
-                const maxY = SCREEN_HEIGHT - BUTTON_SIZE - 200
+                const maxY = SCREEN_HEIGHT - BUTTON_SIZE - BOTTOM_OFFSET
                 const targetY = Math.max(minY, Math.min(maxY, currentY))
 
                 Animated.spring(pan, {

@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../src/context/AlertContext";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { rs, rf, hp } from "../src/utils/responsive";
+import { formatPhoneForDisplay, normalizePhoneNumber, isValidPhoneNumber, getPhoneValidationMessage } from "../src/utils/phone-normalizer";
 
 const CUSTOMER_ID_STORAGE_KEY = "@aaro360/customerId";
 
@@ -48,7 +49,7 @@ export default function CheckoutScreen() {
             if (response.data?.address)
               setDeliveryAddress(response.data.address);
             if (response.data?.phoneNumber)
-              setPhoneNumber(response.data.phoneNumber);
+              setPhoneNumber(formatPhoneForDisplay(response.data.phoneNumber) || response.data.phoneNumber);
           } catch (error) {
             if (__DEV__) console.error("Failed to fetch user profile:", error);
           }
@@ -92,16 +93,18 @@ export default function CheckoutScreen() {
       return;
     }
 
-    const phoneRegex = /^0[0-9]{9}$/;
-    if (!phoneRegex.test(phoneNumber.trim())) {
+    // Validate phone number - accept both formats
+    if (!isValidPhoneNumber(phoneNumber.trim())) {
       showAlert({
         title: "Invalid Phone Number",
-        message:
-          "Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)",
+        message: getPhoneValidationMessage(),
         type: "warning",
       });
       return;
     }
+
+    // Normalize phone number to international format
+    const normalizedPhone = normalizePhoneNumber(phoneNumber.trim());
 
     setIsSubmitting(true);
     try {
@@ -139,7 +142,7 @@ export default function CheckoutScreen() {
           };
         }),
         deliveryAddress: String(deliveryAddress).trim(),
-        phoneNumber: String(phoneNumber).trim(),
+        phoneNumber: normalizedPhone,
         deliveryLatitude: location?.lat ?? 7.7124,
         deliveryLongitude: location?.lng ?? 81.6924,
         deliveryFee: Number(deliveryFee || 0),

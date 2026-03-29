@@ -163,9 +163,29 @@ export default function LoginScreen() {
     try {
       setOtpLoading(true)
       const idToken = await verifyOTP(confirmationResult, otp)
-      dispatch(loginWithPhone(idToken))
-      setShowOtpModal(false)
-      setOtp('')
+      const result = await dispatch(loginWithPhone(idToken))
+      
+      if (loginWithPhone.rejected.match(result)) {
+        const errorMsg = result.payload as string
+        dispatch(clearError())
+        if (errorMsg && (errorMsg.toLowerCase().includes('not registered') || errorMsg.toLowerCase().includes('sign up'))) {
+          setShowOtpModal(false)
+          setOtp('')
+          showAlert({
+            title: 'Phone Not Registered',
+            message: 'This phone number is not registered with us. Would you like to sign up?',
+            type: 'warning',
+            confirmText: 'Sign Up',
+            cancelText: 'Cancel',
+            onConfirm: () => router.push('/register')
+          })
+        } else {
+          showAlert({ title: 'Error', message: errorMsg || 'Failed to verify OTP', type: 'error' })
+        }
+      } else {
+        setShowOtpModal(false)
+        setOtp('')
+      }
     } catch (error: any) {
       showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
     } finally {

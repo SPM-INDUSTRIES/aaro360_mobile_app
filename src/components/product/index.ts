@@ -1,0 +1,6 @@
+export { default as ProductHeroImage } from './ProductHeroImage'
+export { default as ProductBadge } from './ProductBadge'
+export type { BadgeType } from './ProductBadge'
+export { default as ProductRating } from './ProductRating'
+export { default as ExtrasScrollSection } from './ExtrasScrollSection'
+export { default as FloatingCartBar } from './FloatingCartBar'

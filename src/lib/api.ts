@@ -85,6 +85,7 @@ export interface FoodItemFilters {
   limit?: number
   search?: string
   categoryId?: number
+  categoryType?: 'food' | 'grocery'
   minPrice?: number
   maxPrice?: number
 }

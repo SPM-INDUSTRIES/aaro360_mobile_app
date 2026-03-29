@@ -185,6 +185,7 @@ export default function RestaurantDetailScreen() {
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [allRestaurantItems, setAllRestaurantItems] = useState<FoodItem[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [availableCategories, setAvailableCategories] = useState<FoodCategory[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -226,14 +227,16 @@ export default function RestaurantDetailScreen() {
 
   // Filter categories to only show those with items in this restaurant
   useEffect(() => {
-    if (foodItems.length > 0 && categories.length > 0) {
-      const categoryIds = new Set(foodItems.map(item => item.category?.id).filter(Boolean));
+    if (allRestaurantItems.length > 0 && categories.length > 0) {
+      const categoryIds = new Set(allRestaurantItems.map(item => item.category?.id).filter(Boolean));
       const filtered = categories.filter(cat => categoryIds.has(cat.id));
       setAvailableCategories(filtered);
+    } else if (categories.length > 0) {
+      setAvailableCategories(categories);
     } else {
       setAvailableCategories([]);
     }
-  }, [foodItems, categories]);
+  }, [allRestaurantItems, categories]);
 
   useEffect(() => {
     fetchRestaurantAndCategories();
@@ -241,9 +244,10 @@ export default function RestaurantDetailScreen() {
 
   const fetchRestaurantAndCategories = async () => {
     try {
-      const [restaurantRes, categoriesRes] = await Promise.all([
+      const [restaurantRes, categoriesRes, allItemsRes] = await Promise.all([
         vendorApi.getById(restaurantId),
         foodCategoryApi.getAll(),
+        foodItemApi.getByRestaurant(restaurantId, { limit: 100 }),
       ]);
 
       const restaurantData = restaurantRes.data;
@@ -259,6 +263,10 @@ export default function RestaurantDetailScreen() {
         (cat: { type: string }) => cat.type === targetType,
       );
       setCategories(filteredCategories);
+
+      const allItemsData = allItemsRes.data;
+      const allItems = Array.isArray(allItemsData?.data) ? allItemsData.data : [];
+      setAllRestaurantItems(allItems);
     } catch (error) {
       if (__DEV__) console.error("Failed to fetch restaurant data:", error);
     } finally {

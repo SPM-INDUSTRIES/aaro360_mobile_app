@@ -10,6 +10,7 @@ import { updateUser } from '../src/store/slices/authSlice'
 import { Theme } from '../src/styles/theme'
 import * as ImagePicker from 'expo-image-picker'
 import { useAlert } from '../src/context/AlertContext'
+import { formatPhoneForDisplay, normalizePhoneNumber, isValidPhoneNumber, getPhoneValidationMessage } from '../src/utils/phone-normalizer'
 
 export default function EditProfileScreen() {
     const router = useRouter()
@@ -18,7 +19,7 @@ export default function EditProfileScreen() {
 
     const [firstName, setFirstName] = useState(user?.firstName || '')
     const [lastName, setLastName] = useState(user?.lastName || '')
-    const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '')
+    const [phoneNumber, setPhoneNumber] = useState(formatPhoneForDisplay(user?.phoneNumber) || '')
     const [address, setAddress] = useState(user?.address || '')
     const [city, setCity] = useState(user?.city || '')
     const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '')
@@ -67,19 +68,21 @@ export default function EditProfileScreen() {
             return
         }
 
-        // Phone number validation
-        const phoneRegex = /^0[0-9]{9}$/
-        if (phoneNumber && !phoneRegex.test(phoneNumber.trim())) {
-            showAlert({ title: 'Invalid Phone Number', message: 'Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)', type: 'warning' })
+        // Phone number validation - accept both formats
+        if (phoneNumber && !isValidPhoneNumber(phoneNumber.trim())) {
+            showAlert({ title: 'Invalid Phone Number', message: getPhoneValidationMessage(), type: 'warning' })
             return
         }
+
+        // Normalize phone number to international format before sending
+        const normalizedPhone = phoneNumber ? normalizePhoneNumber(phoneNumber.trim()) : undefined
 
         try {
             setIsSubmitting(true)
             const updateData = {
                 firstName,
                 lastName,
-                phoneNumber,
+                phoneNumber: normalizedPhone,
                 address,
                 city,
                 profilePicture
@@ -87,8 +90,11 @@ export default function EditProfileScreen() {
 
             await userApi.updateProfile(user!.id, updateData)
 
-            // Update local state
-            dispatch(updateUser(updateData))
+            // Update local state with normalized phone
+            dispatch(updateUser({
+                ...updateData,
+                phoneNumber: normalizedPhone
+            }))
 
             showAlert({ title: 'Success', message: 'Profile updated successfully', type: 'success', onConfirm: () => router.back() })
         } catch (error: any) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -36,14 +36,12 @@ export default function FilterModal({
   const [localFilters, setLocalFilters] = useState(filters)
   const [priceError, setPriceError] = useState('')
 
-  useState(() => {
-    // Check initial prices
-    const min = parseFloat(localFilters.minPrice || '0')
-    const max = parseFloat(localFilters.maxPrice || '0')
-    if (localFilters.minPrice && localFilters.maxPrice && !isNaN(min) && !isNaN(max) && min > max) {
-      setPriceError('Min should be less than Max')
+  useEffect(() => {
+    if (visible) {
+      setLocalFilters(filters)
+      setPriceError('')
     }
-  })
+  }, [visible, filters])
 
   const handlePriceChange = (type: 'min' | 'max', value: string) => {
     const newFilters = { ...localFilters, [type + 'Price']: value }
@@ -129,7 +127,7 @@ export default function FilterModal({
                   { id: '', name: 'All' },
                   { id: ProductCategory.FOOD, name: 'Food' },
                   { id: ProductCategory.GROCERY, name: 'Grocery' },
-                  { id: ProductCategory.MEDICINE, name: 'Medicine' }
+                  { id: ProductCategory.ECHANELLING, name: 'Echannelling' }
                 ].map((cat) => (
                   <TouchableOpacity
                     key={cat.id}

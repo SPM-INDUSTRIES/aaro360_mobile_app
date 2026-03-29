@@ -8,6 +8,7 @@ import { logoutUser, updateUser } from '../../src/store/slices/authSlice'
 import { userApi } from '../../src/lib/api'
 import { useCallback } from 'react'
 import { useAlert } from '../../src/context/AlertContext'
+import { formatPhoneForDisplay } from '../../src/utils/phone-normalizer'
 
 import { Theme } from "../../src/styles/theme";
 import { rs, rf, wp, hp } from "../../src/utils/responsive";
@@ -105,7 +106,7 @@ export default function ProfileScreen() {
           </Text>
           <Text style={styles.email}>{user.email}</Text>
           {user.phoneNumber && (
-            <Text style={styles.phoneText}>{user.phoneNumber}</Text>
+            <Text style={styles.phoneText}>{formatPhoneForDisplay(user.phoneNumber) || user.phoneNumber}</Text>
           )}
         </View>
 
