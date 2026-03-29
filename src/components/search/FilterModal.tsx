@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native'
+import { rs, rf, wp } from "../../utils/responsive"
 import { Ionicons } from '@expo/vector-icons'
 import { ProductCategory } from '../../types/product'
 import { Theme } from '../../styles/theme'
@@ -35,14 +36,12 @@ export default function FilterModal({
   const [localFilters, setLocalFilters] = useState(filters)
   const [priceError, setPriceError] = useState('')
 
-  useState(() => {
-    // Check initial prices
-    const min = parseFloat(localFilters.minPrice || '0')
-    const max = parseFloat(localFilters.maxPrice || '0')
-    if (localFilters.minPrice && localFilters.maxPrice && !isNaN(min) && !isNaN(max) && min > max) {
-      setPriceError('Min should be less than Max')
+  useEffect(() => {
+    if (visible) {
+      setLocalFilters(filters)
+      setPriceError('')
     }
-  })
+  }, [visible, filters])
 
   const handlePriceChange = (type: 'min' | 'max', value: string) => {
     const newFilters = { ...localFilters, [type + 'Price']: value }
@@ -128,7 +127,7 @@ export default function FilterModal({
                   { id: '', name: 'All' },
                   { id: ProductCategory.FOOD, name: 'Food' },
                   { id: ProductCategory.GROCERY, name: 'Grocery' },
-                  { id: ProductCategory.MEDICINE, name: 'Medicine' }
+                  { id: ProductCategory.ECHANELLING, name: 'Echannelling' }
                 ].map((cat) => (
                   <TouchableOpacity
                     key={cat.id}
@@ -260,7 +259,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   filterLabel: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: '#000000',
     marginBottom: 12,
@@ -270,9 +269,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   ratingButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: Theme.touchTarget.large,
+    height: Theme.touchTarget.large,
+    borderRadius: Theme.touchTarget.large / 2,
     borderWidth: 2,
     borderColor: '#E0E0E0',
     justifyContent: 'center',
@@ -309,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.orangeLight,
   },
   optionText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
   },
   optionTextActive: {
@@ -328,7 +327,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     paddingHorizontal: 15,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#000',
     backgroundColor: '#F9F9F9',
   },
@@ -354,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resetText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: '#666',
   },
@@ -366,13 +365,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: '#FFF',
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     marginTop: 8,
     fontWeight: '600',
   },

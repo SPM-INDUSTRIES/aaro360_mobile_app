@@ -9,6 +9,9 @@ import {
   fetchCart
 } from '../../src/store/slices/cartSlice'
 import { Ionicons } from '@expo/vector-icons'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Theme } from '../../src/styles/theme'
+import { rs, rf, hp, wp } from '../../src/utils/responsive'
 
 export default function CartScreen() {
   const router = useRouter()
@@ -28,7 +31,7 @@ export default function CartScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Cart</Text>
         {items.length > 0 && (
@@ -41,7 +44,7 @@ export default function CartScreen() {
       <ScrollView style={styles.content}>
         {items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="cart-outline" size={80} color="#CCC" />
+            <Ionicons name="cart-outline" size={rs(80)} color="#CCC" />
             <Text style={styles.emptyText}>Your cart is empty</Text>
             <Text style={styles.emptySubtext}>Add items to get started</Text>
             <TouchableOpacity
@@ -73,7 +76,7 @@ export default function CartScreen() {
                       }
                     }}
                   >
-                    <Ionicons name="remove" size={20} color="#1E3A8A" />
+                    <Ionicons name="remove" size={rs(20)} color={Theme.colors.deepBlue} />
                   </TouchableOpacity>
                   <Text style={styles.quantityText}>{item.quantity}</Text>
                   <TouchableOpacity
@@ -84,7 +87,7 @@ export default function CartScreen() {
                       }
                     }}
                   >
-                    <Ionicons name="add" size={20} color="#1E3A8A" />
+                    <Ionicons name="add" size={rs(20)} color={Theme.colors.deepBlue} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.itemTotal}>
@@ -95,7 +98,7 @@ export default function CartScreen() {
                     style={styles.removeButton}
                     onPress={() => item.id && dispatch(removeCartItem(item.id))}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#E53E3E" />
+                    <Ionicons name="trash-outline" size={rs(20)} color="#E53E3E" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -127,198 +130,197 @@ export default function CartScreen() {
         <View style={styles.footer}>
           <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
             <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+            <Ionicons name="arrow-forward" size={rs(20)} color="#FFF" />
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.colors.white,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    padding: rs(Theme.spacing.lg),
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: Theme.colors.border,
+    backgroundColor: Theme.colors.white,
   },
   title: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: 'bold',
-    color: '#124569',
+    color: Theme.colors.deepBlue,
   },
   clearText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#E53E3E',
     fontWeight: '600',
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: hp(12),
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: '600',
-    color: '#666',
-    marginTop: 20,
+    color: Theme.colors.textGray,
+    marginTop: rs(Theme.spacing.lg),
   },
   emptySubtext: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#999',
-    marginTop: 8,
-    marginBottom: 30,
+    marginTop: rs(Theme.spacing.sm),
+    marginBottom: rs(Theme.spacing.xxl),
   },
   shopButton: {
-    backgroundColor: '#f27424',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: rs(30),
+    paddingVertical: rs(Theme.spacing.md),
+    borderRadius: Theme.borderRadius.md,
+    minHeight: Theme.touchTarget.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shopButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
   },
   cartItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Theme.colors.white,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(Theme.spacing.base),
+    marginBottom: rs(Theme.spacing.md),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderColor: Theme.colors.border,
+    ...Theme.shadows.small,
   },
   itemInfo: {
-    marginBottom: 12,
+    marginBottom: rs(Theme.spacing.md),
   },
   itemName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   itemType: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: rf(Theme.fontSize.xs),
+    color: Theme.colors.textGray,
     textTransform: 'capitalize',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   itemPrice: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: rf(Theme.fontSize.sm),
+    color: Theme.colors.textGray,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: rs(Theme.spacing.md),
   },
   quantityButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: Theme.touchTarget.small,
+    height: Theme.touchTarget.small,
+    borderRadius: Theme.touchTarget.small / 2,
     borderWidth: 1,
-    borderColor: '#124569',
+    borderColor: Theme.colors.deepBlue,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '600',
-    color: '#124569',
-    minWidth: 40,
+    color: Theme.colors.deepBlue,
+    minWidth: rs(40),
     textAlign: 'center',
   },
   itemTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: rs(Theme.spacing.md),
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
   itemTotalText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
-    color: '#124569',
+    color: Theme.colors.deepBlue,
   },
   removeButton: {
-    padding: 8,
+    padding: rs(Theme.spacing.sm),
   },
   summary: {
     backgroundColor: '#F8F8F8',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    marginBottom: 20,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(Theme.spacing.lg),
+    marginTop: rs(Theme.spacing.lg),
+    marginBottom: rs(Theme.spacing.lg),
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: rs(Theme.spacing.md),
   },
   summaryLabel: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: rf(Theme.fontSize.base),
+    color: Theme.colors.textGray,
   },
   summaryValue: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#1A1A1A',
     fontWeight: '500',
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    paddingTop: 12,
-    marginTop: 8,
+    borderTopColor: Theme.colors.border,
+    paddingTop: rs(Theme.spacing.md),
+    marginTop: rs(Theme.spacing.sm),
     marginBottom: 0,
   },
   totalLabel: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: 'bold',
     color: '#1A1A1A',
   },
   totalValue: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: 'bold',
-    color: '#f27424',
+    color: Theme.colors.primary,
   },
   footer: {
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: Theme.colors.border,
+    backgroundColor: Theme.colors.white,
   },
   checkoutButton: {
-    backgroundColor: '#f27424',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Theme.colors.primary,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(Theme.spacing.base),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
+    minHeight: Theme.touchTarget.medium,
   },
   checkoutButtonText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
   },
 })

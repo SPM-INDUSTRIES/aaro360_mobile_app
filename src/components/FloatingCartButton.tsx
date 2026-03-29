@@ -12,10 +12,12 @@ import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store/store'
 import { Theme } from '../styles/theme'
+import { rs, rf, screen } from '../utils/responsive'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const BUTTON_SIZE = 60
-const MARGIN = 20
+const BUTTON_SIZE = screen.isLarge ? 70 : screen.isMedium ? 60 : 55
+const MARGIN = rs(20)
+const BOTTOM_OFFSET = 160
 
 export default function FloatingCartButton() {
     const router = useRouter()
@@ -25,10 +27,9 @@ export default function FloatingCartButton() {
         [cartItems]
     )
 
-    // Position state for dragging - use useRef to avoid re-renders
     const pan = useRef(new Animated.ValueXY({
         x: SCREEN_WIDTH - BUTTON_SIZE - MARGIN,
-        y: SCREEN_HEIGHT - BUTTON_SIZE - 200,
+        y: SCREEN_HEIGHT - BUTTON_SIZE - BOTTOM_OFFSET,
     })).current
 
     const panResponder = useMemo(() =>
@@ -55,7 +56,7 @@ export default function FloatingCartButton() {
                 const targetX = snapToLeft ? MARGIN : SCREEN_WIDTH - BUTTON_SIZE - MARGIN
 
                 const minY = 100
-                const maxY = SCREEN_HEIGHT - BUTTON_SIZE - 200
+                const maxY = SCREEN_HEIGHT - BUTTON_SIZE - BOTTOM_OFFSET
                 const targetY = Math.max(minY, Math.min(maxY, currentY))
 
                 Animated.spring(pan, {
@@ -68,7 +69,6 @@ export default function FloatingCartButton() {
         [pan]
     )
 
-    // Don't render if cart is empty
     if (totalCount === 0) {
         return null
     }
@@ -92,7 +92,7 @@ export default function FloatingCartButton() {
                 onPress={handlePress}
                 activeOpacity={0.8}
             >
-                <Ionicons name="cart" size={28} color="#FFF" />
+                <Ionicons name="cart" size={rs(28)} color="#FFF" />
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>
                         {totalCount > 99 ? '99+' : totalCount}
@@ -127,18 +127,18 @@ const styles = StyleSheet.create({
         top: -5,
         right: -5,
         backgroundColor: '#FF3B30',
-        borderRadius: 12,
-        minWidth: 24,
-        height: 24,
+        borderRadius: rs(12),
+        minWidth: rs(24),
+        height: rs(24),
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 6,
+        paddingHorizontal: rs(6),
         borderWidth: 2,
         borderColor: '#FFF',
     },
     badgeText: {
         color: '#FFF',
-        fontSize: 12,
+        fontSize: rf(Theme.fontSize.sm),
         fontWeight: 'bold',
     },
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -13,13 +13,15 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native'
+import { Theme } from "../src/styles/theme"
+import { rs, rf, wp, hp, screen, responsiveWidth } from "../src/utils/responsive"
 import { useRouter } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
 import { sendOtp, register, clearError, registerWithPhone } from '../src/store/slices/authSlice'
 import { sendOTP, verifyOTP, formatPhoneNumber } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
-import { Theme } from '../src/styles/theme'
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha'
 import { Ionicons } from '@expo/vector-icons'
 import { useAlert } from '../src/context/AlertContext'
 
@@ -44,6 +46,7 @@ export default function RegisterScreen() {
   const [countdown, setCountdown] = useState(0)
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
+  const recaptchaVerifier = useRef<any>(null)
 
   useEffect(() => {
     if (error) {
@@ -135,11 +138,25 @@ export default function RegisterScreen() {
       }
     } else {
       if (!validatePhoneForm()) return
-      showAlert({
-        title: 'Phone Authentication Unavailable',
-        message: 'Phone authentication requires a reCAPTCHA verifier. Please use email registration.',
-        type: 'info'
-      })
+      if (!recaptchaVerifier.current) {
+        showAlert({
+          title: 'Error',
+          message: 'reCAPTCHA not initialized. Please try again.',
+          type: 'error'
+        })
+        return
+      }
+      try {
+        setOtpLoading(true)
+        const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+        setConfirmationResult(result)
+        setCountdown(60)
+        setStep('otp')
+      } catch (error: any) {
+        showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+      } finally {
+        setOtpLoading(false)
+      }
     }
   }
 
@@ -155,7 +172,20 @@ export default function RegisterScreen() {
         setCountdown(60)
       }
     } else {
-      showAlert({ title: 'Phone Authentication Unavailable', message: 'Please use email.', type: 'info' })
+      if (!recaptchaVerifier.current) {
+        showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
+        return
+      }
+      try {
+        setOtpLoading(true)
+        const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+        setConfirmationResult(result)
+        setCountdown(60)
+      } catch (error: any) {
+        showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+      } finally {
+        setOtpLoading(false)
+      }
     }
   }
 
@@ -181,10 +211,28 @@ export default function RegisterScreen() {
       }
     } else {
       if (!confirmationResult) {
-        showAlert({ title: 'Error', message: 'OTP session expired.', type: 'error' })
+        showAlert({ title: 'Error', message: 'OTP session expired. Please request a new OTP.', type: 'error' })
         return
       }
-      // Phone register logic...
+      try {
+        setOtpLoading(true)
+        const idToken = await verifyOTP(confirmationResult, otp)
+        const result = await dispatch(
+          registerWithPhone({
+            firstName,
+            lastName,
+            phoneNumber: formatPhoneNumber(phoneNumber),
+            idToken,
+          })
+        )
+        if (registerWithPhone.fulfilled.match(result)) {
+          router.replace('/(tabs)/')
+        }
+      } catch (error: any) {
+        showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
+      } finally {
+        setOtpLoading(false)
+      }
     }
   }
 
@@ -269,6 +317,18 @@ export default function RegisterScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={{
+          apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+          authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+          storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+          appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+        }}
+        attemptInvisibleVerification={true}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -442,14 +502,13 @@ export default function RegisterScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Social Divider */}
+            {/* Social Divider and Buttons - HIDDEN (Google/Apple login not implemented yet)
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>Or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social Buttons */}
             <View style={styles.socialGrid}>
               <TouchableOpacity
                 style={styles.socialButton}
@@ -467,6 +526,7 @@ export default function RegisterScreen() {
                 <Text style={styles.socialButtonText}>Apple</Text>
               </TouchableOpacity>
             </View>
+            */}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
@@ -509,8 +569,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 280,
-    height: 100,
+    width: wp(75),
+    height: rs(100),
   },
   headerTextContainer: {
     alignItems: 'center',
@@ -545,7 +605,7 @@ const styles = StyleSheet.create({
     ...Theme.shadows.small,
   },
   segmentButtonText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textGray,
   },
@@ -563,7 +623,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textDark,
     marginLeft: 4,
@@ -584,7 +644,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 14,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.textDark,
   },
   eyeButton: {
@@ -607,7 +667,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: Theme.colors.white,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '700',
   },
   footer: {
@@ -616,11 +676,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   signInLink: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '700',
     color: Theme.colors.deepBlue,
   },
@@ -636,7 +696,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     marginHorizontal: 16,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   socialGrid: {
@@ -656,7 +716,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   socialButtonText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textDark,
   },
@@ -668,7 +728,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   countryCodeText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: Theme.colors.textDark,
   },
@@ -704,7 +764,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   otpSubtitle: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.textGray,
     lineHeight: 24,
   },
@@ -722,8 +782,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   otpBox: {
-    width: (width - 48 - 40) / 6,
-    height: 64,
+    width: responsiveWidth.otpBox(),
+    height: Theme.touchTarget.large,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -740,7 +800,7 @@ const styles = StyleSheet.create({
     borderColor: Theme.colors.primary,
   },
   otpBoxText: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: '700',
     color: Theme.colors.textDark,
   },
@@ -756,11 +816,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resendLabel: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   resendLink: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '700',
     color: Theme.colors.primary,
   },

@@ -17,6 +17,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../src/context/AlertContext";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { rs, rf, hp } from "../src/utils/responsive";
+import { formatPhoneForDisplay, normalizePhoneNumber, isValidPhoneNumber, getPhoneValidationMessage } from "../src/utils/phone-normalizer";
 
 const CUSTOMER_ID_STORAGE_KEY = "@aaro360/customerId";
 
@@ -37,7 +40,6 @@ export default function CheckoutScreen() {
     null,
   );
 
-  // Fetch user profile and location whenever the screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchUserProfile = async () => {
@@ -47,7 +49,7 @@ export default function CheckoutScreen() {
             if (response.data?.address)
               setDeliveryAddress(response.data.address);
             if (response.data?.phoneNumber)
-              setPhoneNumber(response.data.phoneNumber);
+              setPhoneNumber(formatPhoneForDisplay(response.data.phoneNumber) || response.data.phoneNumber);
           } catch (error) {
             if (__DEV__) console.error("Failed to fetch user profile:", error);
           }
@@ -91,17 +93,18 @@ export default function CheckoutScreen() {
       return;
     }
 
-    // Phone number validation
-    const phoneRegex = /^0[0-9]{9}$/;
-    if (!phoneRegex.test(phoneNumber.trim())) {
+    // Validate phone number - accept both formats
+    if (!isValidPhoneNumber(phoneNumber.trim())) {
       showAlert({
         title: "Invalid Phone Number",
-        message:
-          "Please enter a valid 10-digit phone number starting with 0 (e.g., 0712345678)",
+        message: getPhoneValidationMessage(),
         type: "warning",
       });
       return;
     }
+
+    // Normalize phone number to international format
+    const normalizedPhone = normalizePhoneNumber(phoneNumber.trim());
 
     setIsSubmitting(true);
     try {
@@ -116,7 +119,6 @@ export default function CheckoutScreen() {
 
       const customerId = user.id;
 
-      // Ensure all items have valid data
       if (items.length === 0) {
         showAlert({
           title: "Error",
@@ -140,7 +142,7 @@ export default function CheckoutScreen() {
           };
         }),
         deliveryAddress: String(deliveryAddress).trim(),
-        phoneNumber: String(phoneNumber).trim(),
+        phoneNumber: normalizedPhone,
         deliveryLatitude: location?.lat ?? 7.7124,
         deliveryLongitude: location?.lng ?? 81.6924,
         deliveryFee: Number(deliveryFee || 0),
@@ -151,7 +153,6 @@ export default function CheckoutScreen() {
       const response = await orderApi.create(orderData);
       dispatch(clearCartAsync());
 
-      // Backend returns order object directly in response.data
       const order = response.data;
       if (__DEV__)
         console.log("Order creation response:", JSON.stringify(order, null, 2));
@@ -167,7 +168,6 @@ export default function CheckoutScreen() {
         console.error("Error response:", error.response?.data);
       }
 
-      // Extract validation errors if present
       let errorMessage = "Failed to place order";
       if (error.response?.status === 400) {
         const validationErrors = error.response?.data?.message;
@@ -194,13 +194,13 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
+          <Ionicons name="arrow-back" size={rs(24)} color={Theme.colors.deepBlue} />
         </TouchableOpacity>
         <Text style={styles.title}>Checkout</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: rs(24) }} />
       </View>
 
       <ScrollView style={styles.content}>
@@ -238,14 +238,14 @@ export default function CheckoutScreen() {
           >
             <Ionicons
               name="cash-outline"
-              size={24}
+              size={rs(24)}
               color={Theme.colors.deepBlue}
             />
             <Text style={styles.paymentText}>Cash on Delivery</Text>
             {paymentMethod === "cash_on_delivery" && (
               <Ionicons
                 name="checkmark-circle"
-                size={24}
+                size={rs(24)}
                 color={Theme.colors.primary}
               />
             )}
@@ -285,7 +285,7 @@ export default function CheckoutScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -293,58 +293,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.colors.white,
-    paddingTop: 60,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.border,
   },
   title: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
   },
   section: {
-    marginBottom: 30,
+    marginBottom: rs(30),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
-    marginBottom: 15,
+    marginBottom: rs(15),
   },
   input: {
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 16,
-    minHeight: 100,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(15),
+    fontSize: rf(Theme.fontSize.base),
+    minHeight: hp(12),
     textAlignVertical: "top",
   },
   inputPhone: {
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 16,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(15),
+    fontSize: rf(Theme.fontSize.base),
+    minHeight: Theme.touchTarget.medium,
   },
   paymentOption: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
+    padding: rs(15),
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    borderRadius: 12,
-    gap: 15,
+    borderRadius: Theme.borderRadius.lg,
+    gap: rs(15),
+    minHeight: Theme.touchTarget.medium,
   },
   paymentOptionActive: {
     borderColor: Theme.colors.primary,
@@ -352,57 +353,59 @@ const styles = StyleSheet.create({
   },
   paymentText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.deepBlue,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     color: Theme.colors.textGray,
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     color: Theme.colors.deepBlue,
     fontWeight: "600",
   },
   totalRow: {
     borderTopWidth: 1,
     borderTopColor: Theme.colors.border,
-    paddingTop: 10,
-    marginTop: 10,
+    paddingTop: rs(10),
+    marginTop: rs(10),
   },
   totalLabel: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
     color: Theme.colors.deepBlue,
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "bold",
     color: Theme.colors.primary,
   },
   footer: {
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
     borderTopWidth: 1,
     borderTopColor: Theme.colors.border,
     backgroundColor: Theme.colors.white,
   },
   placeOrderButton: {
     backgroundColor: Theme.colors.primary,
-    padding: 18,
-    borderRadius: 12,
+    padding: rs(18),
+    borderRadius: Theme.borderRadius.lg,
     alignItems: "center",
+    minHeight: Theme.touchTarget.medium,
+    justifyContent: 'center',
   },
   placeOrderButtonDisabled: {
     opacity: 0.6,
   },
   placeOrderButtonText: {
     color: Theme.colors.white,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: "bold",
   },
 });

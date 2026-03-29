@@ -5,6 +5,8 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { orderApi } from '../src/lib/api'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { rs, rf, hp } from '../src/utils/responsive'
 
 interface Order {
   id: number
@@ -42,39 +44,37 @@ export default function OrderTrackingScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['top']}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
         <Text style={styles.loadingText}>Loading order details...</Text>
-      </View>
+      </SafeAreaView>
     )
   }
 
   if (!order) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['top']}>
         <Text style={styles.errorText}>Order not found</Text>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <View style={styles.container}>
-      {/* Custom Header with Back Button */}
+    <SafeAreaView style={styles.container} edges={['top']}>
       {!fromCheckout && (
         <View style={styles.topNav}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons name="arrow-back" size={rs(24)} color="#111827" />
           </TouchableOpacity>
           <Text style={styles.topNavTitle}>Order Details</Text>
-          <View style={{ width: 44 }} />
+          <View style={{ width: rs(44) }} />
         </View>
       )}
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Conditional Success Header */}
         {fromCheckout ? (
           <View style={styles.header}>
-            <Ionicons name="checkmark-circle" size={60} color="#10B981" style={styles.successIcon} />
+            <Ionicons name="checkmark-circle" size={rs(60)} color="#10B981" style={styles.successIcon} />
             <Text style={styles.orderNumber}>Order Placed Successfully!</Text>
             <Text style={styles.orderId}>Order ID: #{order.orderNumber}</Text>
             <View style={styles.statusBadge}>
@@ -96,7 +96,6 @@ export default function OrderTrackingScreen() {
           </View>
         )}
 
-        {/* Order Items Section */}
         <View style={styles.detailsCard}>
           <Text style={styles.cardTitle}>Items Ordered</Text>
           {order.items && order.items.map((item, index) => (
@@ -122,12 +121,11 @@ export default function OrderTrackingScreen() {
           </View>
         </View>
 
-        {/* Delivery Info Section */}
         <View style={styles.detailsCard}>
           <Text style={styles.cardTitle}>Delivery Information</Text>
 
           <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={20} color="#6B7280" />
+            <Ionicons name="location-outline" size={rs(20)} color="#6B7280" />
             <View style={styles.detailText}>
               <Text style={styles.infoLabel}>Delivery Address</Text>
               <Text style={styles.infoValue}>{order.deliveryAddress || 'Address not provided'}</Text>
@@ -136,7 +134,7 @@ export default function OrderTrackingScreen() {
 
           {order.estimatedDeliveryMinutes && (
             <View style={styles.detailRow}>
-              <Ionicons name="time-outline" size={20} color="#6B7280" />
+              <Ionicons name="time-outline" size={rs(20)} color="#6B7280" />
               <View style={styles.detailText}>
                 <Text style={styles.infoLabel}>Estimated Delivery</Text>
                 <Text style={styles.infoValue}>{order.estimatedDeliveryMinutes} minutes</Text>
@@ -145,7 +143,7 @@ export default function OrderTrackingScreen() {
           )}
 
           <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+            <Ionicons name="calendar-outline" size={rs(20)} color="#6B7280" />
             <View style={styles.detailText}>
               <Text style={styles.infoLabel}>Order Date</Text>
               <Text style={styles.infoValue}>
@@ -170,9 +168,9 @@ export default function OrderTrackingScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: rs(40) }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -185,18 +183,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 15,
+    paddingBottom: rs(Theme.spacing.lg),
+    paddingHorizontal: rs(15),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   backButton: {
-    padding: 10,
+    padding: rs(10),
+    minHeight: Theme.touchTarget.medium,
+    justifyContent: 'center',
   },
   topNavTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '700',
     color: '#111827',
   },
@@ -204,13 +203,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    padding: 30,
-    paddingTop: 40,
+    padding: rs(30),
+    paddingTop: rs(40),
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -219,64 +218,64 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   orderIdTitle: {
-    fontSize: 20,
+    fontSize: rf(Theme.fontSize.xl),
     fontWeight: '800',
     color: '#111827',
   },
   successIcon: {
-    marginBottom: 20,
+    marginBottom: rs(Theme.spacing.lg),
   },
   orderNumber: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontWeight: 'bold',
     color: '#111827',
     textAlign: 'center',
   },
   orderId: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#6B7280',
-    marginTop: 8,
+    marginTop: rs(Theme.spacing.sm),
   },
   statusBadge: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: rs(Theme.spacing.md),
+    paddingVertical: rs(6),
     borderRadius: 20,
   },
   statusText: {
     color: '#4F46E5',
     fontWeight: '700',
-    fontSize: 11,
+    fontSize: rf(Theme.fontSize.xs),
     textTransform: 'uppercase',
   },
   detailsCard: {
-    margin: 15,
-    padding: 20,
+    margin: rs(15),
+    padding: rs(Theme.spacing.lg),
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: Theme.borderRadius.xl,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 20,
+    marginBottom: rs(Theme.spacing.lg),
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: rs(Theme.spacing.base),
   },
   itemQuantityBadge: {
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: rs(Theme.spacing.sm),
+    paddingVertical: rs(4),
     borderRadius: 6,
-    marginRight: 12,
+    marginRight: rs(Theme.spacing.md),
   },
   itemQuantityText: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.xs),
     fontWeight: '700',
     color: '#4B5563',
   },
@@ -284,25 +283,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontWeight: '600',
     color: '#111827',
   },
   itemType: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.xs),
     color: '#9CA3AF',
     textTransform: 'capitalize',
-    marginTop: 2,
+    marginTop: rs(2),
   },
   itemPrice: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontWeight: '600',
     color: '#111827',
   },
   divider: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginVertical: 15,
+    marginVertical: rs(15),
   },
   totalSummaryRow: {
     flexDirection: 'row',
@@ -310,59 +309,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalSummaryLabel: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '700',
     color: '#111827',
   },
   totalSummaryValue: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '800',
     color: Theme.colors.primary,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: rs(Theme.spacing.lg),
   },
   detailText: {
-    marginLeft: 15,
+    marginLeft: rs(15),
     flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.xs),
     color: '#9CA3AF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoValue: {
-    fontSize: 15,
+    fontSize: rf(15),
     color: '#374151',
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: rs(4),
   },
   homeButton: {
     backgroundColor: Theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
+    padding: rs(Theme.spacing.base),
+    borderRadius: Theme.borderRadius.lg,
     alignItems: 'center',
-    margin: 15,
+    margin: rs(15),
+    minHeight: Theme.touchTarget.medium,
+    justifyContent: 'center',
   },
   homeButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: rs(10),
     color: '#6B7280',
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
   },
   errorText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.xl),
     color: '#EF4444',
     fontWeight: '600',
   },

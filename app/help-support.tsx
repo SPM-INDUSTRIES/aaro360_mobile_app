@@ -31,7 +31,7 @@ export default function HelpSupportScreen() {
   const router = useRouter()
 
   const handleCall = () => {
-    Linking.openURL('tel:+96770860786')
+    Linking.openURL('tel:+94779200889')
   }
 
   const handleEmail = () => {
@@ -39,7 +39,7 @@ export default function HelpSupportScreen() {
   }
 
   const handleWhatsApp = () => {
-    Linking.openURL('https://wa.me/96770860786')
+    Linking.openURL('https://wa.me/94779200889')
   }
 
   return (
@@ -71,7 +71,7 @@ export default function HelpSupportScreen() {
               <Ionicons name="call" size={20} color={Theme.colors.primary} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Phone</Text>
-                <Text style={[styles.contactValue, styles.linkText]}>+96 77 086 0786</Text>
+                <Text style={[styles.contactValue, styles.linkText]}>+94 77 920 0889</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Theme.colors.textGray} />
             </TouchableOpacity>

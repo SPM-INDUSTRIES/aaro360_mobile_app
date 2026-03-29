@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native'
+import { Theme } from "../src/styles/theme"
+import { rs, rf, wp, hp, screen, responsiveWidth } from "../src/utils/responsive"
 import { useRouter, useRootNavigationState } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
@@ -26,7 +28,7 @@ import {
   formatPhoneNumber,
 } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
-import { Theme } from '../src/styles/theme'
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha'
 import { Ionicons } from '@expo/vector-icons'
 import { authApi } from '../src/lib/api'
 import { useAlert } from '../src/context/AlertContext'
@@ -50,6 +52,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [showOtpModal, setShowOtpModal] = useState(false)
+  const recaptchaVerifier = useRef<any>(null)
   const [otp, setOtp] = useState('')
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
@@ -129,11 +132,21 @@ export default function LoginScreen() {
       return
     }
 
-    showAlert({
-      title: 'Phone Authentication Unavailable',
-      message: 'Phone authentication requires a reCAPTCHA verifier. Please use email authentication or install expo-firebase-recaptcha for phone authentication support.',
-      type: 'info'
-    })
+    if (!recaptchaVerifier.current) {
+      showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
+      return
+    }
+    try {
+      setOtpLoading(true)
+      const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+      setConfirmationResult(result)
+      setShowOtpModal(true)
+      setResendCountdown(60)
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+    } finally {
+      setOtpLoading(false)
+    }
   }
 
   const handleVerifyOtp = async () => {
@@ -150,9 +163,29 @@ export default function LoginScreen() {
     try {
       setOtpLoading(true)
       const idToken = await verifyOTP(confirmationResult, otp)
-      dispatch(loginWithPhone(idToken))
-      setShowOtpModal(false)
-      setOtp('')
+      const result = await dispatch(loginWithPhone(idToken))
+      
+      if (loginWithPhone.rejected.match(result)) {
+        const errorMsg = result.payload as string
+        dispatch(clearError())
+        if (errorMsg && (errorMsg.toLowerCase().includes('not registered') || errorMsg.toLowerCase().includes('sign up'))) {
+          setShowOtpModal(false)
+          setOtp('')
+          showAlert({
+            title: 'Phone Not Registered',
+            message: 'This phone number is not registered with us. Would you like to sign up?',
+            type: 'warning',
+            confirmText: 'Sign Up',
+            cancelText: 'Cancel',
+            onConfirm: () => router.push('/register')
+          })
+        } else {
+          showAlert({ title: 'Error', message: errorMsg || 'Failed to verify OTP', type: 'error' })
+        }
+      } else {
+        setShowOtpModal(false)
+        setOtp('')
+      }
     } catch (error: any) {
       showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
     } finally {
@@ -165,11 +198,20 @@ export default function LoginScreen() {
       showAlert({ title: 'Please wait', message: `You can resend OTP in ${resendCountdown} seconds`, type: 'info' })
       return
     }
-    showAlert({
-      title: 'Phone Authentication Unavailable',
-      message: 'Phone authentication is currently disabled. Please use email.',
-      type: 'info'
-    })
+    if (!recaptchaVerifier.current) {
+      showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
+      return
+    }
+    try {
+      setOtpLoading(true)
+      const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+      setConfirmationResult(result)
+      setResendCountdown(60)
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+    } finally {
+      setOtpLoading(false)
+    }
   }
 
   const handleGoogleLogin = () => {
@@ -241,6 +283,18 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={{
+          apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+          authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+          storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+          appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+        }}
+        attemptInvisibleVerification={true}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -403,14 +457,13 @@ export default function LoginScreen() {
               </>
             )}
 
-            {/* Social Divider */}
+            {/* Social Divider and Buttons - HIDDEN (Google/Apple login not implemented yet)
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>Or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social Buttons */}
             <View style={styles.socialGrid}>
               <TouchableOpacity
                 style={[
@@ -436,6 +489,7 @@ export default function LoginScreen() {
                 <Text style={styles.socialButtonText}>Apple</Text>
               </TouchableOpacity>
             </View>
+            */}
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -738,8 +792,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   logo: {
-    width: 280,
-    height: 100,
+    width: wp(75),
+    height: rs(100),
   },
   headerTextContainer: {
     alignItems: 'center',
@@ -774,7 +828,7 @@ const styles = StyleSheet.create({
     ...Theme.shadows.small,
   },
   segmentButtonText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textGray,
   },
@@ -795,7 +849,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textDark,
     marginLeft: 4,
@@ -816,14 +870,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 14,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.textDark,
   },
   eyeButton: {
     paddingRight: 16,
   },
   forgotPassword: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '600',
     color: Theme.colors.primary,
   },
@@ -844,7 +898,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: Theme.colors.white,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '700',
   },
   divider: {
@@ -859,7 +913,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     marginHorizontal: 16,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   socialGrid: {
@@ -882,7 +936,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   socialButtonText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '500',
     color: Theme.colors.textDark,
   },
@@ -892,11 +946,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   signUpLink: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '700',
     color: Theme.colors.deepBlue,
   },
@@ -908,7 +962,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   countryCodeText: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
     color: Theme.colors.textDark,
   },
@@ -944,7 +998,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   otpSubtitle: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.textGray,
     lineHeight: 24,
   },
@@ -964,8 +1018,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   otpBox: {
-    width: (width - 48 - 40) / 6,
-    height: 64,
+    width: responsiveWidth.otpBox(),
+    height: Theme.touchTarget.large,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -982,7 +1036,7 @@ const styles = StyleSheet.create({
     borderColor: Theme.colors.primary,
   },
   otpBoxText: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: '700',
     color: Theme.colors.textDark,
   },
@@ -999,11 +1053,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   resendLabel: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
   },
   resendLink: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: '700',
     color: Theme.colors.primary,
   },

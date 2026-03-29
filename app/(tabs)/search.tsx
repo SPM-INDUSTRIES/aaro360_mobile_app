@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   StatusBar,
   Alert,
+  Linking,
+  ScrollView,
 } from "react-native";
 import { resolveImageUrl } from "../../src/utils/imageUrl";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,12 +19,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppDispatch } from "../../src/store/store";
 import FilterModal from "../../src/components/search/FilterModal";
 import { productApi } from "../../src/lib/productApi";
-import { foodItemApi } from "../../src/lib/api";
+import { foodItemApi, vendorApi } from "../../src/lib/api";
 import { Product, ProductCategory } from "../../src/types/product";
 import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
 import { useDebounce } from "../../src/hooks/useDebounce";
+import { Theme } from "../../src/styles/theme";
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -43,6 +47,7 @@ export default function SearchScreen() {
     minPrice: "",
     maxPrice: "",
   });
+  const [vendors, setVendors] = useState<any[]>([]);
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
@@ -146,89 +151,109 @@ export default function SearchScreen() {
       } else {
         setLoading(true);
       }
-      let allProducts: Product[] = [];
 
-      try {
-        const response = await productApi.getAll({
-          search: debouncedSearchQuery,
-          page: page,
-          limit: PAGE_SIZE,
-        });
-
-        const productsData = response.data || [];
-        allProducts = productsData;
-
-        if (filters.category) {
-          const categoryType = filters.category as ProductCategory;
-          allProducts = allProducts.filter((p) => p.category === categoryType);
+      if (filters.category === ProductCategory.ECHANELLING) {
+        setProducts([]);
+        try {
+          const res = await vendorApi.getAll({ type: "pharmacy" });
+          const vendorsData = res.data;
+          const vendorList = Array.isArray(vendorsData) ? vendorsData : vendorsData?.data || [];
+          setVendors(vendorList);
+        } catch (error) {
+          if (__DEV__) console.error("Failed to fetch vendors:", error);
+          setVendors([]);
         }
-      } catch (error) {
-        if (__DEV__) console.error("Failed to search products:", error);
+        setLoading(false);
+        setLoadingMore(false);
+        setRefreshing(false);
+        setHasMore(false);
+        return;
       }
 
-      try {
-        const foodItemsRes = await foodItemApi.getAll({
-          page,
-          limit: PAGE_SIZE,
-          search: debouncedSearchQuery || undefined,
-        });
+      setVendors([]);
+      let allProducts: Product[] = [];
 
-        const responseData = foodItemsRes.data;
-        const foodItems = Array.isArray(responseData?.data) ? responseData.data : [];
+      const categoryFilter = filters.category ? (filters.category as ProductCategory) : undefined;
+      const shouldFetchProducts = !categoryFilter || categoryFilter === ProductCategory.FOOD || categoryFilter === ProductCategory.GROCERY;
 
-        let filteredItems = foodItems;
-        if (filters.category) {
-          const categoryType = filters.category as ProductCategory;
-          const categoryTypeFilter =
-            categoryType === ProductCategory.FOOD
-              ? "food"
-              : categoryType === ProductCategory.GROCERY
-                ? "grocery"
-                : null;
-          if (categoryTypeFilter) {
-            filteredItems = filteredItems.filter(
-              (item: any) => item.category?.type === categoryTypeFilter,
-            );
+      if (shouldFetchProducts) {
+        try {
+          const response = await productApi.getAll({
+            search: debouncedSearchQuery,
+            page: page,
+            limit: PAGE_SIZE,
+            category: categoryFilter === ProductCategory.FOOD || categoryFilter === ProductCategory.GROCERY ? categoryFilter : undefined,
+          });
+
+          const productsData = response.data || [];
+          allProducts = productsData;
+
+          if (categoryFilter) {
+            allProducts = allProducts.filter((p) => p.category === categoryFilter);
           }
+        } catch (error) {
+          if (__DEV__) console.error("Failed to search products:", error);
         }
+      }
 
-        const itemsAsProducts: Product[] = filteredItems.map((item: any) => {
-          let productCategory = ProductCategory.FOOD;
-          if (item.category?.type === "grocery") {
-            productCategory = ProductCategory.GROCERY;
-          } else if (item.category?.type === "food") {
-            productCategory = ProductCategory.FOOD;
-          }
+      const shouldFetchFoodItems = !categoryFilter || categoryFilter === ProductCategory.FOOD || categoryFilter === ProductCategory.GROCERY;
 
-          return {
-            id: `food-${item.id}`,
-            name: item.name,
-            description: item.description || "",
-            category: productCategory,
-            subCategory: item.category?.name || "",
-            price: Number(item.price) || 0,
-            brand: "",
-            restaurant: item.restaurant?.name || "",
-            vendorId: item.restaurantId,
-            location: item.restaurant?.address || "",
-            mainImage: item.imageUrl || "",
-            images: [],
-            stock: item.quantity || (item.isAvailable ? 1 : 0),
-            inStock: item.isAvailable && (item.quantity || 0) > 0,
-            isActive: item.isAvailable,
-            tags: [],
-            isFeatured: false,
-            discountPrice: undefined,
-            reviewCount: 0,
-            averageRating: 0,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-          };
-        });
+      if (shouldFetchFoodItems) {
+        try {
+          const categoryTypeFilter = categoryFilter === ProductCategory.FOOD
+            ? "food"
+            : categoryFilter === ProductCategory.GROCERY
+              ? "grocery"
+              : undefined;
 
-        allProducts = [...allProducts, ...itemsAsProducts];
-      } catch (error) {
-        if (__DEV__) console.error("Failed to search food items:", error);
+          const foodItemsRes = await foodItemApi.getAll({
+            page,
+            limit: PAGE_SIZE,
+            search: debouncedSearchQuery || undefined,
+            categoryType: categoryTypeFilter,
+          });
+
+          const responseData = foodItemsRes.data;
+          const foodItems = Array.isArray(responseData?.data) ? responseData.data : [];
+
+          const itemsAsProducts: Product[] = foodItems.map((item: any) => {
+            let productCategory = ProductCategory.FOOD;
+            if (item.category?.type === "grocery") {
+              productCategory = ProductCategory.GROCERY;
+            } else if (item.category?.type === "food") {
+              productCategory = ProductCategory.FOOD;
+            }
+
+            return {
+              id: `food-${item.id}`,
+              name: item.name,
+              description: item.description || "",
+              category: productCategory,
+              subCategory: item.category?.name || "",
+              price: Number(item.price) || 0,
+              brand: "",
+              restaurant: item.restaurant?.name || "",
+              vendorId: item.restaurantId,
+              location: item.restaurant?.address || "",
+              mainImage: item.imageUrl || "",
+              images: [],
+              stock: item.quantity || (item.isAvailable ? 1 : 0),
+              inStock: item.isAvailable && (item.quantity || 0) > 0,
+              isActive: item.isAvailable,
+              tags: [],
+              isFeatured: false,
+              discountPrice: undefined,
+              reviewCount: 0,
+              averageRating: 0,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            };
+          });
+
+          allProducts = [...allProducts, ...itemsAsProducts];
+        } catch (error) {
+          if (__DEV__) console.error("Failed to search food items:", error);
+        }
       }
 
       const uniqueProducts = allProducts.filter(
@@ -275,7 +300,7 @@ export default function SearchScreen() {
   const getCategoryTitle = () => {
     if (filters.category === ProductCategory.FOOD) return "Food Products";
     if (filters.category === ProductCategory.GROCERY) return "Grocery Products";
-    if (filters.category === ProductCategory.MEDICINE) return "Medicine Products";
+    if (filters.category === ProductCategory.ECHANELLING) return "Echannelling Services";
     if (isFeatured === "true") return "Featured Products";
     return "Explore All Products";
   };
@@ -343,6 +368,82 @@ export default function SearchScreen() {
       </TouchableOpacity>
     ),
     [router, handleAddToCart],
+  );
+
+  const handleCallVendor = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const renderVendor = useCallback(
+    ({ item }: { item: any }) => {
+      const imageUrl = item.coverImageUrl || item.logoUrl;
+      const isValidImage = imageUrl && (imageUrl.startsWith("http") || imageUrl.startsWith("data:") || imageUrl.startsWith("/"));
+      const resolvedUrl = imageUrl ? (resolveImageUrl(imageUrl) ?? imageUrl) : null;
+
+      return (
+        <TouchableOpacity
+          style={styles.vendorCard}
+          onPress={() => item.phone && handleCallVendor(item.phone)}
+          activeOpacity={0.7}
+        >
+          {isValidImage && resolvedUrl ? (
+            <Image source={{ uri: resolvedUrl }} style={styles.vendorImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.vendorImage, styles.placeholderImage]}>
+              <Ionicons name="medical" size={40} color="#8B5CF6" />
+            </View>
+          )}
+          <View style={styles.vendorInfo}>
+            <Text style={styles.vendorName}>{item.name}</Text>
+            {item.address && (
+              <Text style={styles.vendorAddress} numberOfLines={2}>{item.address}</Text>
+            )}
+            {item.phone && (
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => handleCallVendor(item.phone!)}
+              >
+                <Ionicons name="call" size={20} color="#FFF" />
+                <Text style={styles.callButtonText}>Call {item.phone}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [],
+  );
+
+  const VendorListHeader = useCallback(
+    () => (
+      <View style={styles.resultsCountContainer}>
+        <Text style={styles.resultsCount}>
+          {vendors.length} {vendors.length === 1 ? "hospital" : "hospitals"}
+        </Text>
+      </View>
+    ),
+    [vendors.length],
+  );
+
+  const VendorListEmpty = useCallback(
+    () => {
+      if (loading) {
+        return (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#f27424" />
+            <Text style={styles.loadingText}>Loading hospitals...</Text>
+          </View>
+        );
+      }
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="medical-outline" size={64} color="#CCC" />
+          <Text style={styles.emptyText}>No hospitals found</Text>
+          <Text style={styles.emptySubtext}>Try selecting a different category</Text>
+        </View>
+      );
+    },
+    [loading],
   );
 
   const ListHeader = useCallback(
@@ -443,20 +544,34 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={products}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderProduct}
-        ListHeaderComponent={ListHeader}
-        ListFooterComponent={ListFooter}
-        ListEmptyComponent={ListEmpty}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {filters.category === ProductCategory.ECHANELLING ? (
+        <FlatList
+          data={vendors}
+          keyExtractor={(item) => item.id}
+          renderItem={renderVendor}
+          ListHeaderComponent={VendorListHeader}
+          ListEmptyComponent={VendorListEmpty}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderProduct}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={ListFooter}
+          ListEmptyComponent={ListEmpty}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <FilterModal
         visible={showFilters}
@@ -507,7 +622,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: "#000000",
     paddingVertical: 12,
   },
@@ -525,7 +640,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   resultsCount: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     fontWeight: "500",
     color: "#666",
     textTransform: "uppercase",
@@ -547,8 +662,8 @@ const styles = StyleSheet.create({
     borderColor: "#F0F0F0",
   },
   productImageContainer: {
-    width: 120,
-    height: 150,
+    width: rs(120),
+    height: rs(150),
     backgroundColor: "#F8F8F8",
   },
   productImage: {
@@ -604,21 +719,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   productPrice: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: "700",
     color: "#124569",
   },
   productOriginalPrice: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     textDecorationLine: "line-through",
     fontWeight: "400",
   },
   addButton: {
     backgroundColor: "#f27424",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: Theme.touchTarget.medium,
+    height: Theme.touchTarget.medium,
+    borderRadius: Theme.touchTarget.medium / 2,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#f27424",
@@ -645,7 +760,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#666",
     fontWeight: "500",
   },
@@ -654,7 +769,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   endOfListText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: "#999",
     fontWeight: "500",
   },
@@ -676,5 +791,55 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
     lineHeight: 22,
+  },
+  vendorCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  vendorImage: {
+    width: rs(100),
+    height: rs(120),
+    backgroundColor: "#F8F8F8",
+  },
+  vendorInfo: {
+    flex: 1,
+    padding: 16,
+    justifyContent: "center",
+  },
+  vendorName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 4,
+  },
+  vendorAddress: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 12,
+  },
+  callButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#124569",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  callButtonText: {
+    color: "#FFF",
+    fontSize: rf(Theme.fontSize.md),
+    fontWeight: "600",
   },
 });

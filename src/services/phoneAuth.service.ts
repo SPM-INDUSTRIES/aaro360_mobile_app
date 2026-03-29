@@ -3,29 +3,16 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
 } from 'firebase/auth'
-
+import { normalizePhoneNumber } from '../utils/phone-normalizer'
 
 /**
  * Format phone number with country code
- * Auto-prepends +94 if missing
- * Sri Lankan phone numbers are 9 digits (after removing leading 0)
+ * Uses shared normalizer for consistency
+ * @deprecated Use normalizePhoneNumber from phone-normalizer.ts instead
  */
 export const formatPhoneNumber = (phone: string): string => {
-  // Remove all non-digit characters except +
-  let cleaned = phone.replace(/[^\d+]/g, '')
-
-  // If doesn't start with +, prepend +94
-  if (!cleaned.startsWith('+')) {
-    // Remove leading 0 if present (Sri Lankan format)
-    if (cleaned.startsWith('0')) {
-      cleaned = cleaned.substring(1)
-    }
-    cleaned = '+94' + cleaned
-  }
-
-  // Return formatted number without warning
-  // Validation will happen in sendOTP where the number is actually used
-  return cleaned
+  const normalized = normalizePhoneNumber(phone)
+  return normalized || phone
 }
 
 /**
@@ -63,11 +50,10 @@ export const sendOTP = async (
       throw new Error('Phone authentication verifier is required. Please use FirebaseRecaptchaVerifierModal from expo-firebase-recaptcha.')
     }
 
-    const formattedPhone = formatPhoneNumber(phoneNumber)
+    const formattedPhone = normalizePhoneNumber(phoneNumber)
 
-    // Validate phone number format - Sri Lankan numbers are 9 digits after +94
-    if (!/^\+94\d{9}$/.test(formattedPhone)) {
-      throw new Error('Invalid phone number format. Expected: +94XXXXXXXXX (9 digits)')
+    if (!formattedPhone) {
+      throw new Error('Invalid phone number format. Please enter a valid Sri Lankan phone number.')
     }
 
     if (__DEV__) console.log('Sending OTP to:', formattedPhone)
@@ -135,12 +121,11 @@ export const verifyOTP = async (
  * Test numbers are configured in Firebase Console
  */
 export const isTestPhoneNumber = (phoneNumber: string): boolean => {
-  // You can add test number patterns here
-  // Or check against a list of test numbers from your config
-  const testNumbers = [
-    '+94765233573', // Example test number
-    // Add more test numbers as needed
+  // Add test phone numbers from Firebase Console here
+  // These numbers will use the test OTP code configured in Firebase Console
+  const testNumbers: string[] = [
+    // Example: '+94700000000',
   ]
-  const formatted = formatPhoneNumber(phoneNumber)
-  return testNumbers.includes(formatted)
+  const formatted = normalizePhoneNumber(phoneNumber)
+  return formatted ? testNumbers.includes(formatted) : false
 }

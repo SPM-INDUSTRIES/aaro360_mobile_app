@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Share,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,8 +16,15 @@ import { addItemToCart } from "../../src/store/slices/cartSlice";
 import { CategoryType } from "../../src/types";
 import { Skeleton, SkeletonProvider } from "../../src/components/SkeletonLoader";
 import { Theme } from "../../src/styles/theme";
+import { rf, rs, hp } from "../../src/utils/responsive";
+import {
+  ProductHeroImage,
+  ProductRating,
+  ExtrasScrollSection,
+  FloatingCartBar,
+  BadgeType,
+} from "../../src/components/product";
 import FloatingCartButton from "../../src/components/FloatingCartButton";
-import ImageWithFallback from "../../src/components/ImageWithFallback";
 import { productApi } from "../../src/lib/productApi";
 import { Product, ProductCategory } from "../../src/types/product";
 
@@ -28,6 +37,7 @@ export default function ProductDetailScreen() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [selectedExtras, setSelectedExtras] = useState<number[]>([]);
 
   useEffect(() => {
     fetchProduct();
@@ -44,6 +54,36 @@ export default function ProductDetailScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleShare = async () => {
+    if (!product) return;
+    try {
+      await Share.share({
+        message: `Check out ${product.name} on Aaro 360!`,
+        title: product.name,
+      });
+    } catch (error) {
+      console.error("Share failed:", error);
+    }
+  };
+
+  const toggleExtra = (extraId: number) => {
+    setSelectedExtras((prev) =>
+      prev.includes(extraId)
+        ? prev.filter((id) => id !== extraId)
+        : [...prev, extraId]
+    );
+  };
+
+  const calculateTotal = (): number => {
+    if (!product) return 0;
+    const basePrice = product.discountPrice ?? product.price;
+    const extrasTotal = selectedExtras.reduce((sum, extraId) => {
+      const extra = product.extras?.find((e) => e.id === extraId);
+      return sum + (extra?.price || 0);
+    }, 0);
+    return (basePrice + extrasTotal) * quantity;
   };
 
   const handleAddToCart = () => {
@@ -65,13 +105,13 @@ export default function ProductDetailScreen() {
       itemType = CategoryType.MEDICINE;
     }
 
-    const unitPrice = product.discountPrice ?? product.price;
     const parsedItemId = parseInt(productId, 10);
-
     if (isNaN(parsedItemId)) {
       Alert.alert("Error", "Invalid product ID");
       return;
     }
+
+    const unitPrice = calculateTotal() / quantity;
 
     dispatch(
       addItemToCart({
@@ -89,15 +129,33 @@ export default function ProductDetailScreen() {
       });
   };
 
+  const getBadgeType = (): BadgeType | undefined => {
+    if (!product) return undefined;
+    if (product.isFeatured) return "featured";
+    if (product.discountPrice && product.price > product.discountPrice) {
+      return "discount";
+    }
+    if (product.orderCount && product.orderCount > 100) return "bestseller";
+    return undefined;
+  };
+
+  const getDiscountPercent = (): number | undefined => {
+    if (!product?.discountPrice) return undefined;
+    const percent = Math.round(
+      ((product.price - product.discountPrice) / product.price) * 100
+    );
+    return percent > 0 ? percent : undefined;
+  };
+
   const renderSkeleton = () => (
     <SkeletonProvider>
       <View style={styles.container}>
         <Skeleton height={300} borderRadius={0} />
         <View style={styles.infoContainer}>
-          <Skeleton width="70%" height={28} style={{ marginBottom: 8 }} />
-          <Skeleton width="40%" height={16} style={{ marginBottom: 16 }} />
-          <Skeleton width="100%" height={60} style={{ marginBottom: 16 }} />
-          <Skeleton width={150} height={44} />
+          <Skeleton width="70%" height={32} style={{ marginBottom: 12 }} />
+          <Skeleton width="40%" height={20} style={{ marginBottom: 16 }} />
+          <Skeleton width="100%" height={80} style={{ marginBottom: 16 }} />
+          <Skeleton width={150} height={40} />
         </View>
       </View>
     </SkeletonProvider>
@@ -130,187 +188,222 @@ export default function ProductDetailScreen() {
     );
   }
 
+  const extras = product.extras || [];
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: product.name,
+          title: "Product Details",
           headerStyle: { backgroundColor: "#FFFFFF" },
           headerTintColor: Theme.colors.deepBlue,
           headerTitleStyle: { fontWeight: "800" },
+          headerRight: () => (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShare}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="share-outline"
+                size={24}
+                color={Theme.colors.primary}
+              />
+            </TouchableOpacity>
+          ),
         }}
       />
-      <ScrollView style={styles.container}>
-        <View style={styles.imageContainer}>
-          <ImageWithFallback
-            source={product.mainImage}
-            style={styles.productImage}
-            contentFit="cover"
-          />
-          {(!product.inStock || product.stock === 0) && (
-            <View style={styles.soldOutOverlay}>
-              <Text style={styles.soldOutText}>Out of Stock</Text>
-            </View>
-          )}
-        </View>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <ProductHeroImage
+          imageUrl={product.mainImage}
+          badge={getBadgeType()}
+          isOutOfStock={!product.inStock || product.stock === 0}
+          discountPercent={getDiscountPercent()}
+        />
 
         <View style={styles.infoContainer}>
-          <Text style={styles.productName}>{product.name}</Text>
-          <Text style={styles.productCategory}>{product.category}</Text>
-
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>
-              රු{Number(product.discountPrice ?? product.price).toFixed(2)}
-            </Text>
-            {product.discountPrice && (
-              <Text style={styles.originalPrice}>
-                රු{Number(product.price).toFixed(2)}
+          <View style={styles.headerRow}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.productName}>{product.name}</Text>
+              <View style={styles.categoryRow}>
+                <Text style={styles.productCategory}>
+                  {product.category.toUpperCase()}
+                </Text>
+                {product.vendor?.name && (
+                  <Text style={styles.vendorText}>
+                    • {product.vendor.name}
+                  </Text>
+                )}
+              </View>
+              {product.averageRating > 0 && (
+                <ProductRating
+                  rating={product.averageRating}
+                  reviewCount={product.reviewCount}
+                  size={18}
+                />
+              )}
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>
+                රු{Number(product.discountPrice ?? product.price).toFixed(2)}
               </Text>
-            )}
+              {product.discountPrice && (
+                <Text style={styles.originalPrice}>
+                  රු{Number(product.price).toFixed(2)}
+                </Text>
+              )}
+              <Text style={styles.taxText}>Inclusive of all taxes</Text>
+            </View>
           </View>
 
           {product.description && (
             <Text style={styles.description}>{product.description}</Text>
           )}
 
-          {product.vendor?.name && (
-            <View style={styles.vendorRow}>
-              <Ionicons name="storefront-outline" size={20} color="#666" />
-              <Text style={styles.vendorText}>{product.vendor.name}</Text>
+          {product.brand && (
+            <View style={styles.brandRow}>
+              <Ionicons name="tag-outline" size={20} color={Theme.colors.textGray} />
+              <Text style={styles.brandText}>{product.brand}</Text>
             </View>
           )}
 
-          <View style={styles.quantityRow}>
-            <Text style={styles.quantityLabel}>Quantity:</Text>
-            <View style={styles.quantityButtons}>
-              <TouchableOpacity
-                style={styles.quantityBtn}
-                onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-              >
-                <Ionicons name="remove" size={20} color="#333" />
-              </TouchableOpacity>
-              <Text style={styles.quantityValue}>{quantity}</Text>
-              <TouchableOpacity
-                style={styles.quantityBtn}
-                onPress={() =>
-                  setQuantity((q) => Math.min(product.stock || 99, q + 1))
-                }
-              >
-                <Ionicons name="add" size={20} color="#333" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.addToCartBtn,
-              (!product.inStock || product.stock === 0) &&
-                styles.addToCartBtnDisabled,
-            ]}
-            onPress={handleAddToCart}
-            disabled={!product.inStock || product.stock === 0}
-          >
-            <Ionicons name="cart-outline" size={22} color="#FFF" />
-            <Text style={styles.addToCartText}>Add to Cart</Text>
-          </TouchableOpacity>
+          {extras.length > 0 && (
+            <ExtrasScrollSection
+              title="Add Extras"
+              extras={extras}
+              selectedIds={selectedExtras}
+              onSelect={toggleExtra}
+            />
+          )}
         </View>
       </ScrollView>
+
+      <FloatingCartBar
+        quantity={quantity}
+        totalPrice={calculateTotal()}
+        onIncrement={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+        onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+        onAddToCart={handleAddToCart}
+        isDisabled={!product.inStock || product.stock === 0}
+        disabledText="Out of Stock"
+      />
       <FloatingCartButton />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
-  imageContainer: { width: "100%", height: 300, backgroundColor: "#F5F5F5" },
-  productImage: { width: "100%", height: "100%" },
-  soldOutOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
+  container: {
+    flex: 1,
+    backgroundColor: Theme.colors.backgroundLight,
   },
-  soldOutText: { color: "#FFF", fontSize: 24, fontWeight: "700" },
-  infoContainer: { padding: 20 },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  shareButton: {
+    padding: 8,
+    borderRadius: 20,
+  },
+  infoContainer: {
+    padding: Theme.spacing.xl,
+    marginTop: Theme.spacing.xl,
+    backgroundColor: Theme.colors.white,
+    marginHorizontal: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.xl,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Theme.spacing.md,
+  },
+  titleContainer: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
   productName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.hero),
     fontWeight: "800",
-    color: "#111",
-    marginBottom: 4,
+    color: Theme.colors.textDark,
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   productCategory: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
-    textTransform: "capitalize",
+    fontSize: rf(Theme.fontSize.sm),
+    fontWeight: "600",
+    color: Theme.colors.textGray,
+    letterSpacing: 1,
   },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+  vendorText: {
+    fontSize: rf(Theme.fontSize.sm),
+    color: Theme.colors.textGray,
+    marginLeft: 8,
   },
-  price: { fontSize: 22, fontWeight: "700", color: Theme.colors.primary },
+  priceContainer: {
+    alignItems: "flex-end",
+  },
+  price: {
+    fontSize: rf(Theme.fontSize.xxxl),
+    fontWeight: "800",
+    color: Theme.colors.primary,
+  },
   originalPrice: {
-    fontSize: 16,
-    color: "#999",
+    fontSize: rf(Theme.fontSize.sm),
+    color: Theme.colors.textGray,
     textDecorationLine: "line-through",
+    marginTop: 4,
+  },
+  taxText: {
+    fontSize: rf(Theme.fontSize.xs),
+    color: Theme.colors.textGray,
+    marginTop: 4,
   },
   description: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
-    marginBottom: 16,
+    fontSize: rf(Theme.fontSize.base),
+    color: Theme.colors.textGray,
+    lineHeight: 24,
+    marginTop: Theme.spacing.md,
   },
-  vendorRow: {
+  brandRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 20,
+    marginTop: Theme.spacing.md,
   },
-  vendorText: { fontSize: 14, color: "#666" },
-  quantityRow: { marginBottom: 24 },
-  quantityLabel: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
-  quantityButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
-  quantityBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    alignItems: "center",
-    justifyContent: "center",
+  brandText: {
+    fontSize: rf(Theme.fontSize.sm),
+    color: Theme.colors.textGray,
   },
-  quantityValue: {
-    fontSize: 18,
-    fontWeight: "600",
-    minWidth: 24,
-    textAlign: "center",
-  },
-  addToCartBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
-  },
-  addToCartBtnDisabled: { backgroundColor: "#CCC", opacity: 0.7 },
-  addToCartText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   errorContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
+    backgroundColor: Theme.colors.backgroundLight,
   },
   errorText: {
-    fontSize: 18,
-    color: "#666",
+    fontSize: rf(Theme.fontSize.lg),
+    color: Theme.colors.textGray,
     marginTop: 16,
     textAlign: "center",
   },
@@ -321,5 +414,9 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
     borderRadius: 12,
   },
-  backButtonText: { color: "#FFF", fontSize: 16, fontWeight: "600" },
+  backButtonText: {
+    color: "#FFF",
+    fontSize: rf(Theme.fontSize.base),
+    fontWeight: "600",
+  },
 });

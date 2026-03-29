@@ -6,6 +6,12 @@ export enum ProductCategory {
   VEHICLE = 'vehicle',
 }
 
+export interface ProductExtra {
+  id: number;
+  name: string;
+  price: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -33,6 +39,7 @@ export interface Product {
   isFeatured: boolean;
   discountPrice?: number;
   orderCount?: number;
+  extras?: ProductExtra[];
   createdAt: string;
   updatedAt: string;
 }

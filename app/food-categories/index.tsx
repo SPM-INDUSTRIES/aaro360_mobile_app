@@ -11,6 +11,7 @@ import FloatingCartButton from '../../src/components/FloatingCartButton'
 import { foodCategoryApi } from '../../src/lib/api'
 
 const { width: screenWidth } = Dimensions.get('window')
+import { rs, rf, wp, hp } from "../../src/utils/responsive";
 
 interface FoodCategory {
   id: number
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
   },
@@ -178,20 +179,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 16,
   },
   categoryCard: {
-    width: (screenWidth - 48) / 2,
+    width: '48%',
     backgroundColor: Theme.colors.white,
     borderRadius: Theme.borderRadius.xl,
     overflow: 'hidden',
     ...Theme.shadows.medium,
     borderWidth: 1,
     borderColor: Theme.colors.border,
+    marginBottom: 16,
   },
   categoryImageContainer: {
     width: '100%',
-    height: 120,
+    height: rs(120),
     position: 'relative',
   },
   categoryImage: {
@@ -214,13 +215,13 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   categoryName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
     marginBottom: 4,
   },
   categoryDescription: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: Theme.colors.textGray,
     lineHeight: 16,
     fontWeight: '500',
@@ -230,13 +231,13 @@ const styles = StyleSheet.create({
     paddingVertical: 100,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '700',
     color: Theme.colors.deepBlue,
     marginTop: 15,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
     marginTop: 5,
     fontWeight: '500',

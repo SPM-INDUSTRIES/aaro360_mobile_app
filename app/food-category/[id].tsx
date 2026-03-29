@@ -6,8 +6,40 @@ import { Ionicons } from '@expo/vector-icons'
 import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
 import { Theme } from '../../src/styles/theme'
+import { rs, rf, wp, hp } from '../../src/utils/responsive'
 import { useDebounce } from '../../src/hooks/useDebounce'
 import { foodCategoryApi, foodItemApi, FoodItemFilters } from '../../src/lib/api'
+
+const FOOD_CATEGORY_PLACEHOLDERS: Record<string, string> = {
+  'appetizers': 'https://images.unsplash.com/photo-1541014741259-de529411b96a?w=800&h=600&fit=crop',
+  'breakfast': 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&h=600&fit=crop',
+  'briyani': 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&h=600&fit=crop',
+  'biryani': 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&h=600&fit=crop',
+  'curry': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&h=600&fit=crop',
+  'rice': 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=800&h=600&fit=crop',
+  'noodles': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&h=600&fit=crop',
+  'pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&h=600&fit=crop',
+  'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=600&fit=crop',
+  'sandwich': 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&h=600&fit=crop',
+  'salad': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop',
+  'dessert': 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&h=600&fit=crop',
+  'drinks': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800&h=600&fit=crop',
+  'beverages': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800&h=600&fit=crop',
+  'seafood': 'https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?w=800&h=600&fit=crop',
+  'chicken': 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&h=600&fit=crop',
+  'kottu': 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&h=600&fit=crop',
+  'default': 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop',
+}
+
+const getCategoryPlaceholder = (name: string): string => {
+  const lowerName = name.toLowerCase()
+  for (const key of Object.keys(FOOD_CATEGORY_PLACEHOLDERS)) {
+    if (lowerName.includes(key)) {
+      return FOOD_CATEGORY_PLACEHOLDERS[key]
+    }
+  }
+  return FOOD_CATEGORY_PLACEHOLDERS['default']
+}
 
 interface FoodCategory {
   id: number
@@ -230,15 +262,11 @@ export default function FoodCategoryDetailScreen() {
       <>
         {category && (
           <View style={styles.categoryHeader}>
-            {category.imageUrl ? (
-              <Image
-                source={{ uri: resolveImageUrl(category.imageUrl) ?? category.imageUrl }}
-                style={styles.categoryImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.categoryImage, { backgroundColor: Theme.colors.blueLight }]} />
-            )}
+            <Image
+              source={{ uri: category.imageUrl ? (resolveImageUrl(category.imageUrl) ?? category.imageUrl) : getCategoryPlaceholder(category.name) }}
+              style={styles.categoryImage}
+              resizeMode="cover"
+            />
             <View style={styles.categoryInfo}>
               <Text style={styles.categoryName}>{category.name}</Text>
               {category.description && (
@@ -378,19 +406,19 @@ const styles = StyleSheet.create({
   },
   categoryImage: {
     width: '100%',
-    height: 220,
+    height: hp(25),
   },
   categoryInfo: {
     padding: 20,
   },
   categoryName: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 8,
   },
   categoryDescription: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
   },
   filtersContainer: {
@@ -409,7 +437,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     color: '#000',
   },
   priceFilters: {
@@ -417,7 +445,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterLabel: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     marginRight: 10,
   },
@@ -427,7 +455,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
   },
   priceSeparator: {
     marginHorizontal: 8,
@@ -439,7 +467,7 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   itemsTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
     color: '#000',
   },
@@ -480,18 +508,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   foodName: {
-    fontSize: 16,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 4,
   },
   restaurantName: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#124569',
     marginBottom: 4,
   },
   foodDescription: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#666',
     marginBottom: 8,
   },
@@ -501,7 +529,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   foodPrice: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: 'bold',
     color: '#124569',
   },
@@ -518,13 +546,13 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '600',
     color: '#666',
     marginTop: 15,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#999',
     marginTop: 5,
   },
@@ -542,7 +570,7 @@ const styles = StyleSheet.create({
   },
   dataLoadingText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     fontWeight: '500',
   },
@@ -553,7 +581,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#666',
     fontWeight: '500',
   },
@@ -562,7 +590,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   endOfListText: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: '#999',
     fontWeight: '500',
   },

@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSelector } from 'react-redux'
 import { RootState } from '../../src/store/store'
 import { orderApi } from '../../src/lib/api'
-
-const CUSTOMER_ID_STORAGE_KEY = '@aaro360/customerId'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Theme } from '../../src/styles/theme'
+import { rs, rf, wp, hp } from '../../src/utils/responsive'
 
 type OrderStatus = 'created' | 'accepted' | 'picked' | 'en_route' | 'delivered' | 'cancelled' | string
 
@@ -31,7 +32,6 @@ export default function OrdersScreen() {
     loadOrders()
   }, [])
 
-  // Refresh orders when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadOrders()
@@ -52,7 +52,6 @@ export default function OrdersScreen() {
       const res = await orderApi.getByCustomer(user.id)
       if (__DEV__) console.log('Orders API response:', res)
 
-      // Handle different response structures
       let ordersData: Order[] = []
       if (Array.isArray(res.data)) {
         ordersData = res.data
@@ -81,7 +80,7 @@ export default function OrdersScreen() {
       .replace(/\b\w/g, (c) => c.toUpperCase())
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>My Orders</Text>
       </View>
@@ -96,19 +95,19 @@ export default function OrdersScreen() {
               await loadOrders()
               setRefreshing(false)
             }}
-            colors={['#f27424']}
-            tintColor="#f27424"
+            colors={[Theme.colors.primary]}
+            tintColor={Theme.colors.primary}
           />
         }
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color="#f27424" />
+            <ActivityIndicator size="large" color={Theme.colors.primary} />
             <Text style={styles.loadingText}>Loading orders...</Text>
           </View>
         ) : orders.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={64} color="#CCC" />
+            <Ionicons name="receipt-outline" size={rs(64)} color="#CCC" />
             <Text style={styles.emptyText}>No orders yet</Text>
             <Text style={styles.emptySubtext}>
               {user?.firstName
@@ -151,121 +150,120 @@ export default function OrdersScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: 60,
+    backgroundColor: Theme.colors.white,
   },
   header: {
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: Theme.colors.border,
   },
   title: {
-    fontSize: 24,
+    fontSize: rf(Theme.fontSize.xxl),
     fontWeight: 'bold',
-    color: '#124569',
+    color: Theme.colors.deepBlue,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: rs(Theme.spacing.lg),
   },
   loadingState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: hp(10),
   },
   loadingText: {
-    marginTop: 12,
-    color: '#666',
-    fontSize: 14,
+    marginTop: rs(Theme.spacing.md),
+    color: Theme.colors.textGray,
+    fontSize: rf(Theme.fontSize.sm),
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: hp(12),
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '600',
-    color: '#666',
-    marginTop: 20,
+    color: Theme.colors.textGray,
+    marginTop: rs(Theme.spacing.lg),
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     color: '#999',
-    marginTop: 8,
-    marginBottom: 30,
+    marginTop: rs(Theme.spacing.sm),
+    marginBottom: rs(Theme.spacing.xxl),
     textAlign: 'center',
+    paddingHorizontal: rs(Theme.spacing.lg),
   },
   shopButton: {
-    backgroundColor: '#f27424',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: rs(30),
+    paddingVertical: rs(Theme.spacing.base),
+    borderRadius: Theme.borderRadius.lg,
+    minHeight: Theme.touchTarget.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shopButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: Theme.colors.white,
+    fontSize: rf(Theme.fontSize.base),
     fontWeight: '600',
   },
   ordersList: {
-    paddingBottom: 30,
+    paddingBottom: rs(Theme.spacing.xxl),
   },
   orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Theme.colors.white,
+    borderRadius: Theme.borderRadius.lg,
+    padding: rs(Theme.spacing.base),
+    marginBottom: rs(Theme.spacing.md),
     borderWidth: 1,
     borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Theme.shadows.small,
   },
   orderHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 6,
+    gap: rs(Theme.spacing.md),
+    marginBottom: rs(6),
   },
   orderNumber: {
     flex: 1,
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '700',
     color: '#1A1A1A',
   },
   orderTotal: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.sm),
     fontWeight: '800',
-    color: '#f27424',
+    color: Theme.colors.primary,
   },
   orderStatus: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.xs),
     fontWeight: '600',
-    color: '#124569',
+    color: Theme.colors.deepBlue,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    marginBottom: 8,
+    marginBottom: rs(Theme.spacing.sm),
   },
   orderAddress: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-    marginBottom: 8,
+    fontSize: rf(13),
+    color: Theme.colors.textGray,
+    lineHeight: rs(18),
+    marginBottom: rs(Theme.spacing.sm),
   },
   orderDate: {
-    fontSize: 12,
+    fontSize: rf(Theme.fontSize.xs),
     color: '#999',
   },
 })

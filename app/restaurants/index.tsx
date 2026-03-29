@@ -8,8 +8,7 @@ import { Theme } from '../../src/styles/theme'
 import { ProductCategory } from '../../src/types/product'
 import { Skeleton, SkeletonProvider } from '../../src/components/SkeletonLoader'
 import FloatingCartButton from '../../src/components/FloatingCartButton'
-
-const { width: screenWidth } = Dimensions.get('window')
+import { rs, rf, wp, hp } from "../../src/utils/responsive"
 
 interface Restaurant {
   id: number
@@ -61,19 +60,14 @@ export default function AllRestaurantsScreen() {
   const renderSkeleton = () => {
     return (
       <SkeletonProvider>
-        <View>
-          {[1, 2, 3].map((i) => (
+        <View style={styles.list}>
+          {[1, 2, 3, 4, 5].map((i) => (
             <View key={i} style={styles.restaurantCard}>
-              <Skeleton height={160} borderRadius={0} />
-              <View style={styles.restaurantInfo}>
-                <View style={styles.logoContainer}>
-                  <Skeleton width={60} height={60} borderRadius={30} />
-                </View>
-                <View style={styles.restaurantDetails}>
-                  <Skeleton width="60%" height={20} style={{ marginBottom: 10 }} />
-                  <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
-                  <Skeleton width="40%" height={14} />
-                </View>
+              <Skeleton width={56} height={56} borderRadius={28} />
+              <View style={styles.cardContent}>
+                <Skeleton width="70%" height={18} style={{ marginBottom: 8 }} />
+                <Skeleton width="90%" height={14} style={{ marginBottom: 4 }} />
+                <Skeleton width="50%" height={12} />
               </View>
             </View>
           ))}
@@ -86,7 +80,6 @@ export default function AllRestaurantsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -98,7 +91,6 @@ export default function AllRestaurantsScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color={Theme.colors.textGray} />
@@ -119,29 +111,14 @@ export default function AllRestaurantsScreen() {
       >
         {loading ? renderSkeleton() : (
           <>
-            {filteredRestaurants.map((restaurant) => (
-              <TouchableOpacity
-                key={restaurant.id}
-                style={styles.restaurantCard}
-                onPress={() => router.push(`/restaurant/${restaurant.id}`)}
-              >
-                <View style={styles.cardCoverContainer}>
-                  {restaurant.coverImageUrl ? (
-                    <Image
-                      source={{ uri: resolveImageUrl(restaurant.coverImageUrl) ?? restaurant.coverImageUrl }}
-                      style={styles.coverImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={[styles.coverImage, styles.placeholderCover]}>
-                      <Text style={styles.placeholderEmoji}>{category === ProductCategory.FOOD ? '🍕' : '🛒'}</Text>
-                    </View>
-                  )}
-                  {/* Overlay for Better Text Visibility if needed */}
-                  <View style={styles.cardOverlay} />
-                </View>
-
-                <View style={styles.restaurantInfo}>
+            <View style={styles.list}>
+              {filteredRestaurants.map((restaurant) => (
+                <TouchableOpacity
+                  key={restaurant.id}
+                  style={styles.restaurantCard}
+                  onPress={() => router.push(`/restaurant/${restaurant.id}`)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.logoContainer}>
                     {restaurant.logoUrl ? (
                       <Image
@@ -149,14 +126,14 @@ export default function AllRestaurantsScreen() {
                         style={styles.logo}
                       />
                     ) : (
-                      <View style={[styles.logo, styles.placeholderLogo]}>
+                      <View style={styles.placeholderLogo}>
                         <Text style={styles.logoEmoji}>{restaurant.name.charAt(0)}</Text>
                       </View>
                     )}
                   </View>
 
-                  <View style={styles.restaurantDetails}>
-                    <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
+                  <View style={styles.cardContent}>
+                    <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
                     <View style={styles.metaInfo}>
                       <Ionicons name="location-outline" size={14} color={Theme.colors.textGray} />
                       <Text style={styles.restaurantAddress} numberOfLines={1}>
@@ -170,10 +147,11 @@ export default function AllRestaurantsScreen() {
                       </View>
                     )}
                   </View>
+
                   <Ionicons name="chevron-forward" size={20} color={Theme.colors.textGray} />
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
 
             {filteredRestaurants.length === 0 && (
               <View style={styles.emptyState}>
@@ -212,24 +190,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '800',
     color: Theme.colors.deepBlue,
   },
   searchContainer: {
     padding: Theme.spacing.md,
-    backgroundColor: 'transparent',
+    backgroundColor: Theme.colors.white,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.colors.white,
+    backgroundColor: Theme.colors.backgroundLight,
     borderRadius: Theme.borderRadius.lg,
     paddingHorizontal: 15,
-    height: 50,
+    height: 48,
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    ...Theme.shadows.small,
   },
   searchInput: {
     flex: 1,
@@ -238,113 +215,86 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Theme.colors.textDark,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   content: {
     flex: 1,
+    backgroundColor: Theme.colors.backgroundLight,
   },
   scrollContent: {
     padding: Theme.spacing.md,
-    paddingTop: 0,
+  },
+  list: {
+    gap: 12,
   },
   restaurantCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Theme.colors.white,
-    borderRadius: Theme.borderRadius.xl,
-    marginBottom: 20,
-    overflow: 'hidden',
-    ...Theme.shadows.medium,
+    borderRadius: Theme.borderRadius.lg,
+    padding: 12,
     borderWidth: 1,
     borderColor: Theme.colors.border,
-  },
-  cardCoverContainer: {
-    width: '100%',
-    height: 160,
-    position: 'relative',
-  },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderCover: {
-    backgroundColor: Theme.colors.blueLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderEmoji: {
-    fontSize: 48,
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  restaurantInfo: {
-    flexDirection: 'row',
-    padding: 15,
-    paddingTop: 40,
-    alignItems: 'flex-start',
-    position: 'relative',
+    ...Theme.shadows.small,
   },
   logoContainer: {
-    position: 'absolute',
-    top: -30,
-    left: 15,
+    marginRight: 12,
   },
   logo: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   placeholderLogo: {
-    backgroundColor: Theme.colors.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Theme.colors.orangeLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoEmoji: {
-    fontSize: 24,
-    color: Theme.colors.white,
+    fontSize: 22,
+    color: Theme.colors.primary,
     fontWeight: 'bold',
   },
-  restaurantDetails: {
+  cardContent: {
     flex: 1,
   },
   restaurantName: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: rf(Theme.fontSize.base),
+    fontWeight: '700',
     color: Theme.colors.deepBlue,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   metaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
+    marginTop: 2,
   },
   restaurantAddress: {
     fontSize: 13,
     color: Theme.colors.textGray,
     fontWeight: '500',
     flex: 1,
+    marginLeft: 4,
   },
   restaurantPhone: {
     fontSize: 13,
     color: Theme.colors.textGray,
     fontWeight: '500',
+    marginLeft: 4,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: rf(Theme.fontSize.lg),
     fontWeight: '700',
     color: Theme.colors.deepBlue,
     marginTop: 15,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: rf(Theme.fontSize.md),
     color: Theme.colors.textGray,
     marginTop: 5,
     fontWeight: '500',
