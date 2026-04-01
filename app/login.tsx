@@ -26,9 +26,9 @@ import {
   sendOTP,
   verifyOTP,
   formatPhoneNumber,
+  initRecaptcha,
 } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha'
 import { Ionicons } from '@expo/vector-icons'
 import { authApi } from '../src/lib/api'
 import { useAlert } from '../src/context/AlertContext'
@@ -52,7 +52,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [showOtpModal, setShowOtpModal] = useState(false)
-  const recaptchaVerifier = useRef<any>(null)
+  const recaptchaInitialized = useRef(false)
   const [otp, setOtp] = useState('')
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
@@ -132,13 +132,13 @@ export default function LoginScreen() {
       return
     }
 
-    if (!recaptchaVerifier.current) {
-      showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
-      return
-    }
     try {
       setOtpLoading(true)
-      const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+      if (!recaptchaInitialized.current) {
+        initRecaptcha()
+        recaptchaInitialized.current = true
+      }
+      const result = await sendOTP(phoneNumber)
       setConfirmationResult(result)
       setShowOtpModal(true)
       setResendCountdown(60)
@@ -198,13 +198,10 @@ export default function LoginScreen() {
       showAlert({ title: 'Please wait', message: `You can resend OTP in ${resendCountdown} seconds`, type: 'info' })
       return
     }
-    if (!recaptchaVerifier.current) {
-      showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
-      return
-    }
     try {
       setOtpLoading(true)
-      const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+      initRecaptcha()
+      const result = await sendOTP(phoneNumber)
       setConfirmationResult(result)
       setResendCountdown(60)
     } catch (error: any) {
@@ -283,18 +280,6 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={{
-          apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-          authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-          storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-          appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-        }}
-        attemptInvisibleVerification={true}
-      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"

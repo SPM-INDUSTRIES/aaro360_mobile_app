@@ -86,6 +86,7 @@ export default function FoodItemDetailScreen() {
     useState<FoodItemVariant | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<number[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     fetchFoodItem();
@@ -150,7 +151,7 @@ export default function FoodItemDetailScreen() {
     );
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!foodItem) return;
 
     const isSoldOut = foodItem.quantity === 0 || !foodItem.isAvailable;
@@ -158,6 +159,8 @@ export default function FoodItemDetailScreen() {
       Alert.alert("Out of Stock", "This item is currently sold out.");
       return;
     }
+
+    if (isAddingToCart) return;
 
     let itemType: CategoryType;
     if (foodItem.category?.type === "food") {
@@ -195,20 +198,23 @@ export default function FoodItemDetailScreen() {
         ? parsedRestaurantId
         : undefined;
 
-    dispatch(
-      addItemToCart({
-        itemId: foodItem.id,
-        itemName: itemName,
-        itemType: itemType,
-        quantity: quantity,
-        unitPrice: Number(unitPrice),
-        restaurantId: validRestaurantId,
-      }),
-    )
-      .unwrap()
-      .catch((error) => {
-        Alert.alert("Error", error || "Failed to add item to cart");
-      });
+    setIsAddingToCart(true);
+    try {
+      await dispatch(
+        addItemToCart({
+          itemId: foodItem.id,
+          itemName: itemName,
+          itemType: itemType,
+          quantity: quantity,
+          unitPrice: Number(unitPrice),
+          restaurantId: validRestaurantId,
+        }),
+      ).unwrap();
+    } catch (error: any) {
+      Alert.alert("Error", error || "Failed to add item to cart");
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const renderSkeleton = () => {
@@ -433,6 +439,7 @@ export default function FoodItemDetailScreen() {
         onAddToCart={handleAddToCart}
         isDisabled={isSoldOut}
         disabledText="Sold Out"
+        isLoading={isAddingToCart}
       />
       <FloatingCartButton />
     </>

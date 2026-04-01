@@ -2,22 +2,15 @@ import { auth } from '../config/firebase.config'
 import {
   signInWithPhoneNumber,
   ConfirmationResult,
+  RecaptchaVerifier,
 } from 'firebase/auth'
 import { normalizePhoneNumber } from '../utils/phone-normalizer'
 
-/**
- * Format phone number with country code
- * Uses shared normalizer for consistency
- * @deprecated Use normalizePhoneNumber from phone-normalizer.ts instead
- */
 export const formatPhoneNumber = (phone: string): string => {
   const normalized = normalizePhoneNumber(phone)
   return normalized || phone
 }
 
-/**
- * Create a promise with timeout
- */
 const withTimeout = <T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -31,23 +24,43 @@ const withTimeout = <T>(
   ])
 }
 
-/**
- * Send OTP to phone number
- * Note: Phone authentication requires a reCAPTCHA verifier
- * For React Native, use expo-firebase-recaptcha's FirebaseRecaptchaVerifierModal
- */
-export const sendOTP = async (
-  phoneNumber: string,
-  verifier: any
-): Promise<ConfirmationResult> => {
+let recaptchaVerifier: RecaptchaVerifier | null = null
+
+export const initRecaptcha = (): RecaptchaVerifier | null => {
+  if (!auth) {
+    console.error('Firebase auth not initialized')
+    return null
+  }
+
   try {
-    // Check if auth is initialized
-    if (!auth) {
-      throw new Error('Firebase authentication is not initialized. Please check your Firebase configuration in .env file.')
+    if (recaptchaVerifier) {
+      recaptchaVerifier.clear()
     }
 
-    if (!verifier) {
-      throw new Error('Phone authentication verifier is required. Please use FirebaseRecaptchaVerifierModal from expo-firebase-recaptcha.')
+    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        console.log('reCAPTCHA verified')
+      },
+      'expired-callback': () => {
+        console.log('reCAPTCHA expired')
+      },
+    })
+
+    return recaptchaVerifier
+  } catch (error) {
+    console.error('Failed to initialize reCAPTCHA:', error)
+    return null
+  }
+}
+
+export const sendOTP = async (
+  phoneNumber: string,
+  verifier?: any
+): Promise<ConfirmationResult> => {
+  try {
+    if (!auth) {
+      throw new Error('Firebase authentication is not initialized. Please check your Firebase configuration in .env file.')
     }
 
     const formattedPhone = normalizePhoneNumber(phoneNumber)
@@ -58,9 +71,18 @@ export const sendOTP = async (
 
     if (__DEV__) console.log('Sending OTP to:', formattedPhone)
 
-    // Add timeout to prevent infinite loading (30 seconds)
+    let verifierToUse = verifier || recaptchaVerifier
+
+    if (!verifierToUse) {
+      verifierToUse = initRecaptcha()
+    }
+
+    if (!verifierToUse) {
+      throw new Error('Failed to initialize phone verification. Please refresh and try again.')
+    }
+
     const confirmationResult = await withTimeout(
-      signInWithPhoneNumber(auth, formattedPhone, verifier),
+      signInWithPhoneNumber(auth, formattedPhone, verifierToUse),
       30000,
       'Request timed out. Please check your internet connection and try again.'
     )
@@ -70,7 +92,6 @@ export const sendOTP = async (
   } catch (error: any) {
     if (__DEV__) console.error('Error sending OTP:', error)
     
-    // Provide more specific error messages
     if (error.code === 'auth/invalid-phone-number') {
       throw new Error('Invalid phone number. Please check and try again.')
     } else if (error.code === 'auth/too-many-requests') {
@@ -89,9 +110,6 @@ export const sendOTP = async (
   }
 }
 
-/**
- * Verify OTP code
- */
 export const verifyOTP = async (
   confirmationResult: ConfirmationResult,
   code: string
@@ -102,7 +120,6 @@ export const verifyOTP = async (
       throw new Error('Failed to verify OTP')
     }
 
-    // Get Firebase ID token
     const idToken = await result.user.getIdToken()
     return idToken
   } catch (error: any) {
@@ -116,16 +133,8 @@ export const verifyOTP = async (
   }
 }
 
-/**
- * Check if a phone number is a test number
- * Test numbers are configured in Firebase Console
- */
 export const isTestPhoneNumber = (phoneNumber: string): boolean => {
-  // Add test phone numbers from Firebase Console here
-  // These numbers will use the test OTP code configured in Firebase Console
-  const testNumbers: string[] = [
-    // Example: '+94700000000',
-  ]
+  const testNumbers: string[] = []
   const formatted = normalizePhoneNumber(phoneNumber)
   return formatted ? testNumbers.includes(formatted) : false
 }

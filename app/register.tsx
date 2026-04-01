@@ -19,9 +19,8 @@ import { useRouter } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
 import { sendOtp, register, clearError, registerWithPhone } from '../src/store/slices/authSlice'
-import { sendOTP, verifyOTP, formatPhoneNumber } from '../src/services/phoneAuth.service'
+import { sendOTP, verifyOTP, formatPhoneNumber, initRecaptcha } from '../src/services/phoneAuth.service'
 import { ConfirmationResult } from 'firebase/auth'
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha'
 import { Ionicons } from '@expo/vector-icons'
 import { useAlert } from '../src/context/AlertContext'
 
@@ -46,7 +45,7 @@ export default function RegisterScreen() {
   const [countdown, setCountdown] = useState(0)
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
-  const recaptchaVerifier = useRef<any>(null)
+  const recaptchaInitialized = useRef(false)
 
   useEffect(() => {
     if (error) {
@@ -121,8 +120,12 @@ export default function RegisterScreen() {
       return false
     }
     const digits = phoneNumber.replace(/\D/g, '')
-    if (digits.length < 9 || digits.length > 10) {
-      showAlert({ title: 'Validation Error', message: 'Please enter a valid 9-10 digit phone number', type: 'warning' })
+    if (digits.length !== 9 && digits.length !== 10) {
+      showAlert({ title: 'Validation Error', message: 'Please enter a valid phone number (e.g., 0712345678)', type: 'warning' })
+      return false
+    }
+    if (digits.length === 10 && !digits.startsWith('0')) {
+      showAlert({ title: 'Validation Error', message: 'Phone number should start with 0 (e.g., 0712345678)', type: 'warning' })
       return false
     }
     return true
@@ -138,17 +141,13 @@ export default function RegisterScreen() {
       }
     } else {
       if (!validatePhoneForm()) return
-      if (!recaptchaVerifier.current) {
-        showAlert({
-          title: 'Error',
-          message: 'reCAPTCHA not initialized. Please try again.',
-          type: 'error'
-        })
-        return
-      }
       try {
         setOtpLoading(true)
-        const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+        if (!recaptchaInitialized.current) {
+          initRecaptcha()
+          recaptchaInitialized.current = true
+        }
+        const result = await sendOTP(phoneNumber)
         setConfirmationResult(result)
         setCountdown(60)
         setStep('otp')
@@ -172,13 +171,10 @@ export default function RegisterScreen() {
         setCountdown(60)
       }
     } else {
-      if (!recaptchaVerifier.current) {
-        showAlert({ title: 'Error', message: 'reCAPTCHA not initialized. Please try again.', type: 'error' })
-        return
-      }
       try {
         setOtpLoading(true)
-        const result = await sendOTP(phoneNumber, recaptchaVerifier.current)
+        initRecaptcha()
+        const result = await sendOTP(phoneNumber)
         setConfirmationResult(result)
         setCountdown(60)
       } catch (error: any) {
@@ -249,8 +245,10 @@ export default function RegisterScreen() {
           <View style={styles.otpHeadlineSection}>
             <Text style={styles.otpTitle}>Verification Code</Text>
             <Text style={styles.otpSubtitle}>
-              We have sent the code verification to {'\n'}
-              <Text style={styles.otpPhone}>{authMode === 'email' ? email : `+94 ${phoneNumber}`}</Text>
+              We have sent the code verification to{'\n'}
+              <Text style={styles.otpPhone}>
+                {authMode === 'email' ? email : formatPhoneNumber(phoneNumber)}
+              </Text>
             </Text>
           </View>
 
@@ -317,18 +315,6 @@ export default function RegisterScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={{
-          apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-          authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-          storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-          appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-        }}
-        attemptInvisibleVerification={true}
-      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -479,14 +465,15 @@ export default function RegisterScreen() {
                   </View>
                   <TextInput
                     style={styles.input}
-                    placeholder="77 123 4567"
+                    placeholder="0712345678"
                     placeholderTextColor="#999"
                     value={phoneNumber}
-                    onChangeText={(text) => setPhoneNumber(text.replace(/\D/g, ''))}
+                    onChangeText={(text) => setPhoneNumber(text.replace(/\D/g, '').slice(0, 10))}
                     keyboardType="phone-pad"
                     maxLength={10}
                   />
                 </View>
+                <Text style={styles.inputHint}>Enter 10-digit number starting with 0</Text>
               </View>
             )}
 
@@ -498,7 +485,9 @@ export default function RegisterScreen() {
               {(status === 'loading' || otpLoading) ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>Send OTP</Text>
+                <Text style={styles.primaryButtonText}>
+                  {authMode === 'email' ? 'Continue' : 'Send OTP'}
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -646,6 +635,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: rf(Theme.fontSize.base),
     color: Theme.colors.textDark,
+  },
+  inputHint: {
+    fontSize: rf(Theme.fontSize.sm),
+    color: Theme.colors.textGray,
+    marginLeft: 4,
+    marginTop: 4,
   },
   eyeButton: {
     paddingRight: 16,
