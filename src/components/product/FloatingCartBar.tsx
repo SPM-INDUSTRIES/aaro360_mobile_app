@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Theme } from '../../styles/theme'
 import { rf, rs } from '../../utils/responsive'
@@ -14,6 +14,7 @@ interface FloatingCartBarProps {
     onAddToCart: () => void
     isDisabled?: boolean
     disabledText?: string
+    isLoading?: boolean
 }
 
 export default function FloatingCartBar({
@@ -24,6 +25,7 @@ export default function FloatingCartBar({
     onAddToCart,
     isDisabled = false,
     disabledText = 'Sold Out',
+    isLoading = false,
 }: FloatingCartBarProps) {
     return (
         <View style={styles.container}>
@@ -56,24 +58,30 @@ export default function FloatingCartBar({
                 <TouchableOpacity
                     style={[
                         styles.cartBtn,
-                        isDisabled && styles.cartBtnDisabled,
+                        (isDisabled || isLoading) && styles.cartBtnDisabled,
                     ]}
                     onPress={onAddToCart}
-                    disabled={isDisabled}
+                    disabled={isDisabled || isLoading}
                     activeOpacity={0.8}
                 >
-                    <Ionicons 
-                        name="cart" 
-                        size={20} 
-                        color={isDisabled ? Theme.colors.textGray : Theme.colors.primary}
-                        style={styles.cartIcon}
-                    />
-                    <Text style={[
-                        styles.cartBtnText,
-                        isDisabled && styles.cartBtnTextDisabled,
-                    ]}>
-                        {isDisabled ? disabledText : 'Add to Cart'}
-                    </Text>
+                    {isLoading ? (
+                        <ActivityIndicator color={Theme.colors.primary} size="small" />
+                    ) : (
+                        <>
+                            <Ionicons 
+                                name="cart" 
+                                size={20} 
+                                color={isDisabled ? Theme.colors.textGray : Theme.colors.primary}
+                                style={styles.cartIcon}
+                            />
+                            <Text style={[
+                                styles.cartBtnText,
+                                isDisabled && styles.cartBtnTextDisabled,
+                            ]}>
+                                {isDisabled ? disabledText : 'Add to Cart'}
+                            </Text>
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
         </View>

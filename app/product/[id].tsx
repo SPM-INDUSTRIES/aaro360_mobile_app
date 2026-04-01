@@ -38,6 +38,7 @@ export default function ProductDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedExtras, setSelectedExtras] = useState<number[]>([]);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -86,13 +87,15 @@ export default function ProductDetailScreen() {
     return (basePrice + extrasTotal) * quantity;
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
 
     if (!product.inStock || product.stock === 0) {
       Alert.alert("Out of Stock", "This product is currently unavailable.");
       return;
     }
+
+    if (isAddingToCart) return;
 
     let itemType: CategoryType;
     if (product.category === ProductCategory.FOOD) {
@@ -113,20 +116,23 @@ export default function ProductDetailScreen() {
 
     const unitPrice = calculateTotal() / quantity;
 
-    dispatch(
-      addItemToCart({
-        itemId: parsedItemId,
-        itemName: product.name,
-        itemType,
-        quantity,
-        unitPrice: Number(unitPrice),
-        restaurantId: undefined,
-      }),
-    )
-      .unwrap()
-      .catch((error) => {
-        Alert.alert("Error", error || "Failed to add item to cart");
-      });
+    setIsAddingToCart(true);
+    try {
+      await dispatch(
+        addItemToCart({
+          itemId: parsedItemId,
+          itemName: product.name,
+          itemType,
+          quantity,
+          unitPrice: Number(unitPrice),
+          restaurantId: undefined,
+        }),
+      ).unwrap();
+    } catch (error: any) {
+      Alert.alert("Error", error || "Failed to add item to cart");
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const getBadgeType = (): BadgeType | undefined => {
@@ -285,11 +291,12 @@ export default function ProductDetailScreen() {
       <FloatingCartBar
         quantity={quantity}
         totalPrice={calculateTotal()}
-        onIncrement={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+        onIncrement={() => setQuantity((q) => Math.min(product?.stock || 99, q + 1))}
         onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
         onAddToCart={handleAddToCart}
-        isDisabled={!product.inStock || product.stock === 0}
+        isDisabled={!product?.inStock || product?.stock === 0}
         disabledText="Out of Stock"
+        isLoading={isAddingToCart}
       />
       <FloatingCartButton />
     </>

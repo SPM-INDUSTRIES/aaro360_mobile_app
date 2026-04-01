@@ -23,9 +23,6 @@
       }
     },
     "android": {
-      "minSdkVersion": 24,
-      "compileSdkVersion": 35,
-      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "foregroundImage": "./assets/appicon/icon.png",
         "backgroundColor": "#fa6521"
