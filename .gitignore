@@ -89,10 +89,6 @@ local.properties
 *.md
 bun.lock
 
-# avoid agent files
-.cursor/
-.claude/
-.claude-flow/
 
 # Firebase - DO NOT COMMIT
 google-services.json
