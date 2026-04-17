@@ -565,7 +565,7 @@ export default function RestaurantDetailScreen() {
     );
   }
 
-  return (
+return (
     <>
       <Stack.Screen
         options={{
@@ -649,10 +649,10 @@ export default function RestaurantDetailScreen() {
           onEndReachedThreshold={0.5}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          contentContainerStyle={styles.listContent}
+contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           style={styles.flatList}
-        />
+/>
       </View>
 
       <AddToCartModal
