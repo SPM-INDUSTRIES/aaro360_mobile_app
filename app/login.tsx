@@ -53,6 +53,7 @@ export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [showOtpModal, setShowOtpModal] = useState(false)
   const recaptchaInitialized = useRef(false)
+  const passwordInputRef = useRef<TextInput>(null)
   const [otp, setOtp] = useState('')
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
@@ -278,12 +279,14 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         <View style={styles.content}>
           {/* Logo Section */}
@@ -354,6 +357,9 @@ export default function LoginScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoComplete="email"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
+                      blurOnSubmit={false}
                     />
                   </View>
                 </View>
@@ -368,6 +374,7 @@ export default function LoginScreen() {
                   <View style={styles.inputWrapper}>
                     <Ionicons name="lock-closed-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
                     <TextInput
+                      ref={passwordInputRef}
                       style={styles.input}
                       placeholder="••••••••"
                       placeholderTextColor="#999"
@@ -376,6 +383,8 @@ export default function LoginScreen() {
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
                       autoComplete="password"
+                      returnKeyType="done"
+                      onSubmitEditing={handleEmailLogin}
                     />
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
@@ -764,12 +773,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: Platform.OS === 'android' ? 60 : 20,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'android' ? 60 : 40,
   },
   logoContainer: {
     alignItems: 'center',

@@ -8,11 +8,11 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  StatusBar,
   Alert,
   Linking,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { resolveImageUrl } from "../../src/utils/imageUrl";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -302,7 +302,7 @@ export default function SearchScreen() {
     if (filters.category === ProductCategory.GROCERY) return "Grocery Products";
     if (filters.category === ProductCategory.ECHANELLING) return "Echannelling Services";
     if (isFeatured === "true") return "Featured Products";
-    return "Explore All Products";
+    return "Explore All Product";
   };
 
   const renderProduct = useCallback(
@@ -510,9 +510,7 @@ export default function SearchScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
-      
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.searchHeader}>
         <View style={styles.categoryTitleContainer}>
           <Text style={styles.categoryTitle}>{getCategoryTitle()}</Text>
@@ -580,7 +578,7 @@ export default function SearchScreen() {
         onApplyFilters={setFilters}
       />
       <FloatingCartButton />
-    </View>
+    </SafeAreaView>
   );
 }
 

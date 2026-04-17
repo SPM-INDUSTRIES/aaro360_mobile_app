@@ -46,6 +46,10 @@ export default function RegisterScreen() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
   const recaptchaInitialized = useRef(false)
+  const lastNameInputRef = useRef<TextInput>(null)
+  const emailInputRef = useRef<TextInput>(null)
+  const passwordInputRef = useRef<TextInput>(null)
+  const confirmPasswordInputRef = useRef<TextInput>(null)
 
   useEffect(() => {
     if (error) {
@@ -313,12 +317,14 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         <View style={styles.content}>
           <TouchableOpacity onPress={() => router.back()} style={styles.topBackBtn}>
@@ -385,6 +391,9 @@ export default function RegisterScreen() {
                     value={firstName}
                     onChangeText={setFirstName}
                     autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => lastNameInputRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
                 </View>
               </View>
@@ -392,12 +401,22 @@ export default function RegisterScreen() {
                 <Text style={styles.label}>Last Name</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
+                    ref={lastNameInputRef}
                     style={styles.input}
                     placeholder="Last name"
                     placeholderTextColor="#999"
                     value={lastName}
                     onChangeText={setLastName}
                     autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => {
+                      if (authMode === 'email') {
+                        emailInputRef.current?.focus()
+                      } else {
+                        // For phone mode, go to register
+                      }
+                    }}
+                    blurOnSubmit={false}
                   />
                 </View>
               </View>
@@ -410,6 +429,7 @@ export default function RegisterScreen() {
                   <View style={styles.inputWrapper}>
                     <Ionicons name="mail-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
                     <TextInput
+                      ref={emailInputRef}
                       style={styles.input}
                       placeholder="name@example.com"
                       placeholderTextColor="#999"
@@ -417,6 +437,9 @@ export default function RegisterScreen() {
                       onChangeText={setEmail}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
+                      blurOnSubmit={false}
                     />
                   </View>
                 </View>
@@ -426,6 +449,7 @@ export default function RegisterScreen() {
                   <View style={styles.inputWrapper}>
                     <Ionicons name="lock-closed-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
                     <TextInput
+                      ref={passwordInputRef}
                       style={styles.input}
                       placeholder="••••••••"
                       placeholderTextColor="#999"
@@ -433,6 +457,9 @@ export default function RegisterScreen() {
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      returnKeyType="next"
+                      onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                      blurOnSubmit={false}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
                       <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={Theme.colors.textGray} />
@@ -537,12 +564,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: Platform.OS === 'android' ? 60 : 20,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'android' ? 60 : 40,
   },
   topBackBtn: {
     width: 44,
