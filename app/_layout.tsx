@@ -8,6 +8,9 @@ import { store, useAppDispatch, useAppSelector } from '../src/store/store'
 import { initializeAuth } from '../src/store/slices/authSlice'
 import { initializeInterceptors } from '../src/lib/api'
 import { fetchCart } from '../src/store/slices/cartSlice'
+import { loadOnboardingStatus } from '../src/store/slices/uiSlice'
+import { Monitoring } from '../src/services/monitoring.service'
+import { ErrorBoundary } from '../src/components/ErrorBoundary'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -15,25 +18,30 @@ function AppContent() {
   const segments = useSegments()
   const navigationState = useRootNavigationState()
   const { isAuthenticated } = useAppSelector((state) => state.auth)
+  const { hasSeenOnboarding, onboardingLoaded } = useAppSelector((state) => state.ui)
   const [isReady, setIsReady] = useState(false)
 
-  // Initialize interceptors and auth once
+  // Initialize interceptors, auth, and onboarding status once
   useEffect(() => {
+    Monitoring.init()
     initializeInterceptors()
+    dispatch(loadOnboardingStatus())
     dispatch(initializeAuth()).finally(() => setIsReady(true))
   }, [])
 
   // Navigation guard
   useEffect(() => {
-    if (!isReady || !navigationState?.key) return
+    if (!isReady || !onboardingLoaded || !navigationState?.key) return
 
     const segment = segments[0]
     const isAuthScreen = segment === 'login' || segment === 'register' || segment === 'auth'
+    const isOnboarding = segment === 'onboarding'
 
     if (__DEV__) {
       console.log('Navigation Guard:', {
         segment,
         isAuthenticated,
+        hasSeenOnboarding,
         isReady,
         path: segments.join('/')
       })
@@ -44,12 +52,17 @@ function AppContent() {
       if (__DEV__) console.log('User unauthenticated, redirecting to login...')
       router.replace('/login')
     }
-    // Redirect authenticated users away from auth screens
-    else if (isAuthenticated && isAuthScreen) {
+    // Authenticated: show the onboarding walkthrough once, on first login
+    else if (isAuthenticated && !hasSeenOnboarding && !isOnboarding) {
+      if (__DEV__) console.log('First login, showing onboarding...')
+      router.replace('/onboarding')
+    }
+    // Redirect authenticated users away from auth screens (once onboarding is done)
+    else if (isAuthenticated && hasSeenOnboarding && isAuthScreen) {
       if (__DEV__) console.log('User authenticated, redirecting to home...')
       router.replace('/(tabs)/')
     }
-  }, [isReady, isAuthenticated, segments, navigationState?.key])
+  }, [isReady, onboardingLoaded, isAuthenticated, hasSeenOnboarding, segments, navigationState?.key])
 
   // Fetch cart when authenticated
   useEffect(() => {
@@ -78,6 +91,7 @@ function AppContent() {
         }}
       >
         <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -99,11 +113,13 @@ import { AlertProvider } from '../src/context/AlertContext'
 
 export default function RootLayout() {
   return (
-    <Provider store={store}>
-      <AlertProvider>
-        <AppContent />
-      </AlertProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <AlertProvider>
+          <AppContent />
+        </AlertProvider>
+      </Provider>
+    </ErrorBoundary>
   )
 }
 

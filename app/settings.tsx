@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native'
 import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
@@ -37,6 +38,20 @@ export default function SettingsScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
+
+  const handleSendFeedback = () => {
+    const subject = encodeURIComponent('Aaro360 App Feedback')
+    const body = encodeURIComponent(
+      `\n\n\n---\nApp Version: ${appVersion}\nAccount: ${user?.email || user?.phoneNumber || 'Guest'}`
+    )
+    Linking.openURL(`mailto:aaroeats@gmail.com?subject=${subject}&body=${body}`).catch(() =>
+      showAlert({
+        title: 'Unable to open email',
+        message: 'Please send your feedback to aaroeats@gmail.com',
+        type: 'error',
+      })
+    )
+  }
 
   const handleSendOtp = async () => {
     if (!forgotEmail) {
@@ -142,6 +157,24 @@ export default function SettingsScreen() {
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>Change Password</Text>
               <Text style={styles.menuSubtitle}>Reset your account password</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Theme.colors.textGray} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Feedback</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleSendFeedback}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name="chatbubble-ellipses-outline" size={24} color={Theme.colors.primary} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Send Feedback</Text>
+              <Text style={styles.menuSubtitle}>Share suggestions or report an issue</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Theme.colors.textGray} />
           </TouchableOpacity>

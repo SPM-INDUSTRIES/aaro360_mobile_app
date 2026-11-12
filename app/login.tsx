@@ -19,16 +19,10 @@ import { rs, rf, wp, hp, screen, responsiveWidth } from "../src/utils/responsive
 import { useRouter, useRootNavigationState } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
-import { loginWithEmail, loginWithGoogle, clearError, loginWithPhone } from '../src/store/slices/authSlice'
+import { loginWithEmail, loginWithGoogle, clearError, loginWithSmsOtp, registerWithSmsOtp } from '../src/store/slices/authSlice'
 import * as Google from 'expo-auth-session/providers/google'
 import * as WebBrowser from 'expo-web-browser'
-import {
-  sendOTP,
-  verifyOTP,
-  formatPhoneNumber,
-  initRecaptcha,
-} from '../src/services/phoneAuth.service'
-import { ConfirmationResult } from 'firebase/auth'
+import { smsApi } from '../src/lib/notificationApi'
 import { Ionicons } from '@expo/vector-icons'
 import { authApi } from '../src/lib/api'
 import { useAlert } from '../src/context/AlertContext'
@@ -52,12 +46,17 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [showOtpModal, setShowOtpModal] = useState(false)
-  const recaptchaInitialized = useRef(false)
   const passwordInputRef = useRef<TextInput>(null)
   const [otp, setOtp] = useState('')
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
+
+  // SMS OTP registration step (shown when a new number verifies its code)
+  const [showNameStep, setShowNameStep] = useState(false)
+  const [regFirstName, setRegFirstName] = useState('')
+  const [regLastName, setRegLastName] = useState('')
+  const [regEmail, setRegEmail] = useState('')
+  const [regLoading, setRegLoading] = useState(false)
 
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -122,6 +121,14 @@ export default function LoginScreen() {
     dispatch(loginWithEmail({ email, password }))
   }
 
+  const resetOtpFlow = () => {
+    setOtp('')
+    setShowNameStep(false)
+    setRegFirstName('')
+    setRegLastName('')
+    setRegEmail('')
+  }
+
   const handlePhoneLogin = async () => {
     if (!phoneNumber.trim()) {
       showAlert({ title: 'Validation Error', message: 'Please enter your phone number', type: 'warning' })
@@ -135,16 +142,12 @@ export default function LoginScreen() {
 
     try {
       setOtpLoading(true)
-      if (!recaptchaInitialized.current) {
-        initRecaptcha()
-        recaptchaInitialized.current = true
-      }
-      const result = await sendOTP(phoneNumber)
-      setConfirmationResult(result)
+      await smsApi.sendOtp(phoneNumber)
+      resetOtpFlow()
       setShowOtpModal(true)
       setResendCountdown(60)
     } catch (error: any) {
-      showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+      showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to send OTP', type: 'error' })
     } finally {
       setOtpLoading(false)
     }
@@ -156,41 +159,59 @@ export default function LoginScreen() {
       return
     }
 
-    if (!confirmationResult) {
-      showAlert({ title: 'Error', message: 'OTP session expired. Please request a new OTP.', type: 'error' })
-      return
-    }
-
     try {
       setOtpLoading(true)
-      const idToken = await verifyOTP(confirmationResult, otp)
-      const result = await dispatch(loginWithPhone(idToken))
-      
-      if (loginWithPhone.rejected.match(result)) {
-        const errorMsg = result.payload as string
-        dispatch(clearError())
-        if (errorMsg && (errorMsg.toLowerCase().includes('not registered') || errorMsg.toLowerCase().includes('sign up'))) {
+      const result = await dispatch(loginWithSmsOtp({ phoneNumber, code: otp }))
+
+      if (loginWithSmsOtp.fulfilled.match(result)) {
+        const payload: any = result.payload
+        if (payload.registered) {
+          // Existing user — logged in; navigation guard takes over.
           setShowOtpModal(false)
-          setOtp('')
-          showAlert({
-            title: 'Phone Not Registered',
-            message: 'This phone number is not registered with us. Would you like to sign up?',
-            type: 'warning',
-            confirmText: 'Sign Up',
-            cancelText: 'Cancel',
-            onConfirm: () => router.push('/register')
-          })
+          resetOtpFlow()
         } else {
-          showAlert({ title: 'Error', message: errorMsg || 'Failed to verify OTP', type: 'error' })
+          // New number, verified — collect a name to finish sign-up.
+          setShowNameStep(true)
         }
       } else {
-        setShowOtpModal(false)
-        setOtp('')
+        const errorMsg = result.payload as string
+        dispatch(clearError())
+        showAlert({ title: 'Error', message: errorMsg || 'Failed to verify code', type: 'error' })
       }
     } catch (error: any) {
-      showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
+      showAlert({ title: 'Error', message: error.message || 'Failed to verify code', type: 'error' })
     } finally {
       setOtpLoading(false)
+    }
+  }
+
+  const handleCreateAccount = async () => {
+    if (!regFirstName.trim() || !regLastName.trim()) {
+      showAlert({ title: 'Validation Error', message: 'Please enter your first and last name', type: 'warning' })
+      return
+    }
+    try {
+      setRegLoading(true)
+      const result = await dispatch(
+        registerWithSmsOtp({
+          phoneNumber,
+          firstName: regFirstName.trim(),
+          lastName: regLastName.trim(),
+          email: regEmail.trim() || undefined,
+        })
+      )
+      if (registerWithSmsOtp.fulfilled.match(result)) {
+        setShowOtpModal(false)
+        resetOtpFlow()
+      } else {
+        const errorMsg = result.payload as string
+        dispatch(clearError())
+        showAlert({ title: 'Error', message: errorMsg || 'Failed to create account', type: 'error' })
+      }
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: error.message || 'Failed to create account', type: 'error' })
+    } finally {
+      setRegLoading(false)
     }
   }
 
@@ -201,12 +222,10 @@ export default function LoginScreen() {
     }
     try {
       setOtpLoading(true)
-      initRecaptcha()
-      const result = await sendOTP(phoneNumber)
-      setConfirmationResult(result)
+      await smsApi.resendOtp(phoneNumber)
       setResendCountdown(60)
     } catch (error: any) {
-      showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+      showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to send OTP', type: 'error' })
     } finally {
       setOtpLoading(false)
     }
@@ -509,6 +528,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {!showNameStep ? (
           <View style={styles.otpContent}>
             <View style={styles.otpHeadlineSection}>
               <Text style={styles.otpTitle}>Verification Code</Text>
@@ -572,6 +592,74 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          ) : (
+          <ScrollView contentContainerStyle={styles.otpContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.otpHeadlineSection}>
+              <Text style={styles.otpTitle}>Create your account</Text>
+              <Text style={styles.otpSubtitle}>
+                Your number is verified. Just tell us your name to finish.
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>First Name</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="First name"
+                  placeholderTextColor="#999"
+                  value={regFirstName}
+                  onChangeText={setRegFirstName}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Last Name</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last name"
+                  placeholderTextColor="#999"
+                  value={regLastName}
+                  onChangeText={setRegLastName}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email (optional)</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor="#999"
+                  value={regEmail}
+                  onChangeText={setRegEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, regLoading && styles.buttonDisabled]}
+              onPress={handleCreateAccount}
+              disabled={regLoading}
+            >
+              {regLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+          )}
         </SafeAreaView>
       </Modal>
 

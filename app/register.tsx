@@ -12,15 +12,15 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
+  Keyboard,
 } from 'react-native'
 import { Theme } from "../src/styles/theme"
 import { rs, rf, wp, hp, screen, responsiveWidth } from "../src/utils/responsive"
 import { useRouter } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../src/store/store'
-import { sendOtp, register, clearError, registerWithPhone } from '../src/store/slices/authSlice'
-import { sendOTP, verifyOTP, formatPhoneNumber, initRecaptcha } from '../src/services/phoneAuth.service'
-import { ConfirmationResult } from 'firebase/auth'
+import { sendOtp, register, clearError, checkEmail, loginWithSmsOtp, registerWithSmsOtp } from '../src/store/slices/authSlice'
+import { smsApi } from '../src/lib/notificationApi'
 import { Ionicons } from '@expo/vector-icons'
 import { useAlert } from '../src/context/AlertContext'
 
@@ -43,9 +43,7 @@ export default function RegisterScreen() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [otp, setOtp] = useState('')
   const [countdown, setCountdown] = useState(0)
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [otpLoading, setOtpLoading] = useState(false)
-  const recaptchaInitialized = useRef(false)
   const lastNameInputRef = useRef<TextInput>(null)
   const emailInputRef = useRef<TextInput>(null)
   const passwordInputRef = useRef<TextInput>(null)
@@ -57,6 +55,12 @@ export default function RegisterScreen() {
       dispatch(clearError())
     }
   }, [error])
+
+  useEffect(() => {
+    if (otp.length === 6 && step === 'otp' && status !== 'loading') {
+      handleRegister()
+    }
+  }, [otp])
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -138,6 +142,15 @@ export default function RegisterScreen() {
   const handleSendOtp = async () => {
     if (authMode === 'email') {
       if (!validateEmailForm()) return
+      const emailCheck = await dispatch(checkEmail(email))
+      if (checkEmail.fulfilled.match(emailCheck) && emailCheck.payload.exists) {
+        showAlert({
+          title: 'Email Already Registered',
+          message: 'This email is already registered. Please sign in instead.',
+          type: 'warning',
+        })
+        return
+      }
       const result = await dispatch(sendOtp(email))
       if (sendOtp.fulfilled.match(result)) {
         setCountdown(60)
@@ -147,16 +160,11 @@ export default function RegisterScreen() {
       if (!validatePhoneForm()) return
       try {
         setOtpLoading(true)
-        if (!recaptchaInitialized.current) {
-          initRecaptcha()
-          recaptchaInitialized.current = true
-        }
-        const result = await sendOTP(phoneNumber)
-        setConfirmationResult(result)
+        await smsApi.sendOtp(phoneNumber)
         setCountdown(60)
         setStep('otp')
       } catch (error: any) {
-        showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+        showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to send OTP', type: 'error' })
       } finally {
         setOtpLoading(false)
       }
@@ -177,12 +185,10 @@ export default function RegisterScreen() {
     } else {
       try {
         setOtpLoading(true)
-        initRecaptcha()
-        const result = await sendOTP(phoneNumber)
-        setConfirmationResult(result)
+        await smsApi.resendOtp(phoneNumber)
         setCountdown(60)
       } catch (error: any) {
-        showAlert({ title: 'Error', message: error.message || 'Failed to send OTP', type: 'error' })
+        showAlert({ title: 'Error', message: error.response?.data?.message || 'Failed to send OTP', type: 'error' })
       } finally {
         setOtpLoading(false)
       }
@@ -210,23 +216,31 @@ export default function RegisterScreen() {
         router.replace('/(tabs)/')
       }
     } else {
-      if (!confirmationResult) {
-        showAlert({ title: 'Error', message: 'OTP session expired. Please request a new OTP.', type: 'error' })
-        return
-      }
       try {
         setOtpLoading(true)
-        const idToken = await verifyOTP(confirmationResult, otp)
+        const verifyResult = await dispatch(loginWithSmsOtp({ phoneNumber, code: otp }))
+        if (!loginWithSmsOtp.fulfilled.match(verifyResult)) {
+          showAlert({ title: 'Error', message: (verifyResult.payload as string) || 'Failed to verify code', type: 'error' })
+          return
+        }
+        const payload: any = verifyResult.payload
+        if (payload.registered) {
+          // This number already has an account — they're now logged in.
+          router.replace('/(tabs)/')
+          return
+        }
         const result = await dispatch(
-          registerWithPhone({
+          registerWithSmsOtp({
+            phoneNumber,
             firstName,
             lastName,
-            phoneNumber: formatPhoneNumber(phoneNumber),
-            idToken,
+            email: email.trim() || undefined,
           })
         )
-        if (registerWithPhone.fulfilled.match(result)) {
+        if (registerWithSmsOtp.fulfilled.match(result)) {
           router.replace('/(tabs)/')
+        } else {
+          showAlert({ title: 'Error', message: (result.payload as string) || 'Failed to create account', type: 'error' })
         }
       } catch (error: any) {
         showAlert({ title: 'Error', message: error.message || 'Failed to verify OTP', type: 'error' })
@@ -251,7 +265,7 @@ export default function RegisterScreen() {
             <Text style={styles.otpSubtitle}>
               We have sent the code verification to{'\n'}
               <Text style={styles.otpPhone}>
-                {authMode === 'email' ? email : formatPhoneNumber(phoneNumber)}
+                {authMode === 'email' ? email : `+94 ${phoneNumber}`}
               </Text>
             </Text>
           </View>
@@ -274,7 +288,12 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.hiddenInput}
               value={otp}
-              onChangeText={setOtp}
+              onChangeText={(text) => {
+                setOtp(text)
+                if (text.length === 6) {
+                  Keyboard.dismiss()
+                }
+              }}
               keyboardType="number-pad"
               maxLength={6}
               autoFocus
@@ -293,22 +312,20 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.otpFooter}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                (otp.length < 6 || status === 'loading') && styles.buttonDisabled
-              ]}
-              onPress={handleRegister}
-              disabled={otp.length < 6 || status === 'loading'}
-            >
-              {status === 'loading' ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Verify & Register</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              (otp.length < 6 || status === 'loading') && styles.buttonDisabled
+            ]}
+            onPress={handleRegister}
+            disabled={otp.length < 6 || status === 'loading'}
+          >
+            {status === 'loading' ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Verify & Register</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     )
@@ -320,6 +337,10 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
+      <TouchableOpacity onPress={() => router.back()} style={styles.topBackBtn}>
+        <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
+      </TouchableOpacity>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -327,10 +348,6 @@ export default function RegisterScreen() {
         bounces={false}
       >
         <View style={styles.content}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.topBackBtn}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.deepBlue} />
-          </TouchableOpacity>
-
           <View style={styles.logoContainer}>
             <Image
               source={require('../assets/logo.png')}
@@ -469,9 +486,14 @@ export default function RegisterScreen() {
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Confirm Password</Text>
-                  <View style={styles.inputWrapper}>
+                  <View style={[
+                    styles.inputWrapper,
+                    confirmPassword.length > 0 && password !== confirmPassword && styles.inputWrapperError,
+                    confirmPassword.length > 0 && password === confirmPassword && styles.inputWrapperSuccess,
+                  ]}>
                     <Ionicons name="lock-closed-outline" size={20} color={Theme.colors.textGray} style={styles.inputIcon} />
                     <TextInput
+                      ref={confirmPasswordInputRef}
                       style={styles.input}
                       placeholder="••••••••"
                       placeholderTextColor="#999"
@@ -479,8 +501,20 @@ export default function RegisterScreen() {
                       onChangeText={setConfirmPassword}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      returnKeyType="done"
                     />
+                    {confirmPassword.length > 0 && (
+                      <Ionicons
+                        name={password === confirmPassword ? "checkmark-circle" : "close-circle"}
+                        size={20}
+                        color={password === confirmPassword ? "#22C55E" : "#EF4444"}
+                        style={styles.eyeButton}
+                      />
+                    )}
                   </View>
+                  {confirmPassword.length > 0 && password !== confirmPassword && (
+                    <Text style={styles.passwordMismatchHint}>Passwords do not match</Text>
+                  )}
                 </View>
               </>
             ) : (
@@ -569,7 +603,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
     paddingBottom: Platform.OS === 'android' ? 60 : 40,
   },
   topBackBtn: {
@@ -579,7 +612,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginLeft: 24,
+    marginTop: Platform.OS === 'ios' ? 50 : 30,
+    marginBottom: 8,
   },
   logoContainer: {
     alignItems: 'center',
@@ -653,6 +688,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  inputWrapperError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  inputWrapperSuccess: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  passwordMismatchHint: {
+    fontSize: rf(Theme.fontSize.sm),
+    color: '#EF4444',
+    marginLeft: 4,
+    marginTop: 4,
   },
   inputIcon: {
     paddingLeft: 16,
@@ -849,10 +898,6 @@ const styles = StyleSheet.create({
   },
   resendDisabled: {
     color: '#9CA3AF',
-  },
-  otpFooter: {
-    marginTop: 'auto',
-    paddingBottom: 20,
   },
 })
 

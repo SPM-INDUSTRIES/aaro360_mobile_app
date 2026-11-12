@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import * as SecureStore from 'expo-secure-store'
 import { authApi } from '../../lib/api'
+import { smsApi } from '../../lib/notificationApi'
 
 const REFRESH_TOKEN_KEY = 'aaro360_refresh_token'
 
@@ -134,6 +135,22 @@ export const register = createAsyncThunk(
 )
 
 /**
+ * Check if email is already registered
+ */
+export const checkEmail = createAsyncThunk(
+  'auth/checkEmail',
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await authApi.checkEmail(email)
+      return { exists: response.data.exists }
+    } catch (error: any) {
+      if (__DEV__) console.error('Check email error:', error)
+      return rejectWithValue(getErrorMessage(error))
+    }
+  }
+)
+
+/**
  * Send OTP to Email
  */
 export const sendOtp = createAsyncThunk(
@@ -202,6 +219,58 @@ export const registerWithPhone = createAsyncThunk(
       return { accessToken, user }
     } catch (error: any) {
       if (__DEV__) console.error('Phone register error:', error)
+      return rejectWithValue(getErrorMessage(error))
+    }
+  }
+)
+
+/**
+ * SMS OTP: verify the code.
+ * - Existing user  -> persists session, returns { registered: true }.
+ * - New number     -> returns { registered: false } so the UI can collect a name.
+ */
+export const loginWithSmsOtp = createAsyncThunk(
+  'auth/loginWithSmsOtp',
+  async (
+    data: { phoneNumber: string; code: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await smsApi.verifyOtp(data.phoneNumber, data.code)
+      const { registered, accessToken, refreshToken, user } = response.data
+      if (registered && accessToken && refreshToken) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
+        return { registered: true, accessToken, user }
+      }
+      return { registered: false as const }
+    } catch (error: any) {
+      if (__DEV__) console.error('SMS OTP login error:', error)
+      return rejectWithValue(getErrorMessage(error))
+    }
+  }
+)
+
+/**
+ * SMS OTP: register a new (already OTP-verified) phone number, then log in.
+ */
+export const registerWithSmsOtp = createAsyncThunk(
+  'auth/registerWithSmsOtp',
+  async (
+    data: {
+      phoneNumber: string
+      firstName: string
+      lastName: string
+      email?: string
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await smsApi.register(data)
+      const { accessToken, refreshToken, user } = response.data
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)
+      return { accessToken, user }
+    } catch (error: any) {
+      if (__DEV__) console.error('SMS OTP register error:', error)
       return rejectWithValue(getErrorMessage(error))
     }
   }
@@ -442,6 +511,48 @@ const authSlice = createSlice({
         state.error = null
       })
       .addCase(registerWithPhone.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.payload as string
+        state.isAuthenticated = false
+        state.accessToken = null
+        state.user = null
+      })
+
+    // SMS OTP Login
+    builder
+      .addCase(loginWithSmsOtp.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+      })
+      .addCase(loginWithSmsOtp.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        state.error = null
+        const payload: any = action.payload
+        if (payload.registered && payload.accessToken) {
+          state.accessToken = payload.accessToken
+          state.user = payload.user
+          state.isAuthenticated = true
+        }
+      })
+      .addCase(loginWithSmsOtp.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.payload as string
+      })
+
+    // SMS OTP Register
+    builder
+      .addCase(registerWithSmsOtp.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+      })
+      .addCase(registerWithSmsOtp.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        state.accessToken = action.payload.accessToken
+        state.user = action.payload.user as any
+        state.isAuthenticated = true
+        state.error = null
+      })
+      .addCase(registerWithSmsOtp.rejected, (state, action) => {
         state.status = 'failed'
         state.error = action.payload as string
         state.isAuthenticated = false

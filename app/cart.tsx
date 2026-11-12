@@ -1,16 +1,31 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { RootState } from '../src/store/store'
-import { removeItem, updateQuantity, clearCart } from '../src/store/slices/cartSlice'
+import { RootState, useAppDispatch } from '../src/store/store'
+import { removeItem, updateQuantity, clearCart, setDeliveryFee } from '../src/store/slices/cartSlice'
 import { Ionicons } from '@expo/vector-icons'
+import { settingsApi } from '../src/lib/api'
 
 export default function CartScreen() {
   const router = useRouter()
   const dispatch = useDispatch()
+  const appDispatch = useAppDispatch()
   const { items, total, deliveryFee, discount } = useSelector(
     (state: RootState) => state.cart
   )
+
+  useEffect(() => {
+    settingsApi.getDeliveryFee()
+      .then((response) => {
+        if (response.data?.deliveryFee !== undefined) {
+          appDispatch(setDeliveryFee(response.data.deliveryFee))
+        }
+      })
+      .catch((error) => {
+        if (__DEV__) console.error('Failed to fetch delivery fee:', error)
+      })
+  }, [appDispatch])
 
   const handleCheckout = () => {
     if (items.length > 0) {
@@ -46,7 +61,7 @@ export default function CartScreen() {
               <View key={index} style={styles.cartItem}>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.itemName}</Text>
-                  <Text style={styles.itemPrice}>${item.unitPrice.toFixed(2)}</Text>
+                  <Text style={styles.itemPrice}>රු{item.unitPrice.toFixed(2)}</Text>
                 </View>
                 <View style={styles.quantityControls}>
                   <TouchableOpacity
@@ -88,24 +103,24 @@ export default function CartScreen() {
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal</Text>
                 <Text style={styles.summaryValue}>
-                  ${(total - deliveryFee + discount).toFixed(2)}
+                  රු{(total - deliveryFee + discount).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                <Text style={styles.summaryValue}>${deliveryFee.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>රු{deliveryFee.toFixed(2)}</Text>
               </View>
               {discount > 0 && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Discount</Text>
                   <Text style={[styles.summaryValue, styles.discount]}>
-                    -${discount.toFixed(2)}
+                    -රු{discount.toFixed(2)}
                   </Text>
                 </View>
               )}
               <View style={[styles.summaryRow, styles.totalRow]}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>රු{total.toFixed(2)}</Text>
               </View>
             </View>
           </>

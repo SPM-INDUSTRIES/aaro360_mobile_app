@@ -128,7 +128,7 @@ export default function OrdersScreen() {
                 key={order.id}
                 style={styles.orderCard}
                 activeOpacity={0.8}
-                onPress={() => router.push(`/order-tracking?id=${order.id}`)}
+                onPress={() => router.push({ pathname: '/order-tracking', params: { id: String(order.id) } })}
               >
                 <View style={styles.orderHeaderRow}>
                   <Text style={styles.orderNumber} numberOfLines={1}>

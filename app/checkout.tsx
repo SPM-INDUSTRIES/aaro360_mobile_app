@@ -11,8 +11,8 @@ import * as Location from "expo-location";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSelector } from "react-redux";
 import { store, RootState, useAppDispatch } from "../src/store/store";
-import { clearCartAsync } from "../src/store/slices/cartSlice";
-import { orderApi, userApi } from "../src/lib/api";
+import { clearCartAsync, setDeliveryFee } from "../src/store/slices/cartSlice";
+import { orderApi, userApi, settingsApi } from "../src/lib/api";
 import { useState, useEffect, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -69,9 +69,20 @@ export default function CheckoutScreen() {
           if (__DEV__) console.error("Failed to get location:", error);
         }
       };
+      const fetchDeliveryFee = async () => {
+        try {
+          const response = await settingsApi.getDeliveryFee();
+          if (response.data?.deliveryFee !== undefined) {
+            dispatch(setDeliveryFee(response.data.deliveryFee));
+          }
+        } catch (error) {
+          if (__DEV__) console.error("Failed to fetch delivery fee:", error);
+        }
+      };
       fetchUserProfile();
       fetchLocation();
-    }, [user?.id]),
+      fetchDeliveryFee();
+    }, [user?.id, dispatch]),
   );
 
   const handlePlaceOrder = async () => {
@@ -145,7 +156,7 @@ export default function CheckoutScreen() {
         phoneNumber: normalizedPhone,
         deliveryLatitude: location?.lat ?? 7.7124,
         deliveryLongitude: location?.lng ?? 81.6924,
-        deliveryFee: Number(deliveryFee || 0),
+        deliveryFee: Number(deliveryFee || 0), // sent for reference, backend overrides with settings
         discount: Number(0),
         paymentMethod: String(paymentMethod || "cash_on_delivery"),
       };
@@ -161,7 +172,7 @@ export default function CheckoutScreen() {
         throw new Error("Invalid order response");
       }
 
-      router.push(`/order-tracking?id=${order.id}&fromCheckout=true`);
+      router.push({ pathname: '/order-tracking', params: { id: String(order.id), fromCheckout: 'true' } });
     } catch (error: any) {
       if (__DEV__) {
         console.error("Order creation error:", error);
@@ -257,12 +268,12 @@ export default function CheckoutScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>
-              ${(total - deliveryFee).toFixed(2)}
+              රු{(total - deliveryFee).toFixed(2)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>${deliveryFee.toFixed(2)}</Text>
+            <Text style={styles.summaryValue}>රු{deliveryFee.toFixed(2)}</Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>

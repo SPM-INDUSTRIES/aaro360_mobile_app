@@ -6,12 +6,14 @@ import {
   removeCartItem,
   updateCartItemQuantity,
   clearCartAsync,
-  fetchCart
+  fetchCart,
+  setDeliveryFee
 } from '../../src/store/slices/cartSlice'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Theme } from '../../src/styles/theme'
 import { rs, rf, hp, wp } from '../../src/utils/responsive'
+import { settingsApi } from '../../src/lib/api'
 
 export default function CartScreen() {
   const router = useRouter()
@@ -22,6 +24,15 @@ export default function CartScreen() {
 
   useEffect(() => {
     dispatch(fetchCart())
+    settingsApi.getDeliveryFee()
+      .then((response) => {
+        if (response.data?.deliveryFee !== undefined) {
+          dispatch(setDeliveryFee(response.data.deliveryFee))
+        }
+      })
+      .catch((error) => {
+        if (__DEV__) console.error('Failed to fetch delivery fee:', error)
+      })
   }, [dispatch])
 
   const handleCheckout = () => {

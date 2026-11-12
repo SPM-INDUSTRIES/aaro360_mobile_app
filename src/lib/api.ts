@@ -98,6 +98,7 @@ export interface OrderFilters {
 
 // Auth endpoints - use baseApi to avoid interceptor side effects during login/refresh
 export const authApi = {
+  checkEmail: (email: string) => baseApi.get(`/auth/check-email?email=${encodeURIComponent(email)}`),
   googleLogin: (data: { idToken: string }) => baseApi.post('/auth/google-login', data),
   emailLogin: (data: { email: string; password: string }) => baseApi.post('/auth/email-login', data),
   phoneLogin: (data: { idToken: string }) => baseApi.post('/auth/phone-login', data),
@@ -170,6 +171,11 @@ export const foodCategoryApi = {
   getAll: (filters?: { type?: string }) => baseApi.get('/food-categories', { params: filters }),
   getById: (id: number) => baseApi.get(`/food-categories/${id}`),
   getActive: () => baseApi.get('/food-categories/active'),
+}
+
+// Settings endpoints (public - no auth required)
+export const settingsApi = {
+  getDeliveryFee: () => baseApi.get<{ deliveryFee: number; currency: string }>('/settings/delivery-fee'),
 }
 
 export default api
